@@ -21,12 +21,17 @@ engineer): **accuracy and method transparency matter more than polish.**
 * **Phase 1 (feasibility): done.** `notebooks/01_feasibility.ipynb`, README "Phase 1".
 * **Phase 2 (production pipeline): done.** `riverbrain/` package, 5-year fit
   (`model/fit_report.md`), hourly run verified live 2026-09-24, workflows written. **Not yet
-  pushed**: there is no GitHub remote yet, so ask before creating or pushing one.
+  pushed** at the time; now deployed (see below).
 * **Phase 3 (UI): built** (`site/`: index.html, app.css, app.js, chart.js, sw.js, manifest,
   icons). No framework or build step; views are Now/Forecast/Explore/Fish/Chemistry/Method.
   Set `REPO` in `site/app.js` once the GitHub repo exists.
-* **Next:** deploy (GitHub repo + Pages + USGS_API_KEY secret), then Tier 2 items in
-  `docs/feature-plan.md`. Model to-dos: overtides × low-flow for flood–ebb asymmetry; flow-dependent Bonneville
+* **Deployed 2026-09-24:** repo https://github.com/NYRLND/river-brain (public), site
+  https://nyrlnd.github.io/river-brain/ (Pages via Actions), hourly workflow verified green.
+  Commits use the no-reply email 265278505+NYRLND@users.noreply.github.com (repo-local git
+  config); never commit the user's personal email. `gh` is at
+  "C:\Program Files\GitHub CLI\gh.exe" (may not be on PATH in older shells).
+  USGS_API_KEY secret: not yet set (the user adds it; never handle the key).
+* **Next:** Tier 2 items in `docs/feature-plan.md`. Model to-dos: overtides × low-flow for flood–ebb asymmetry; flow-dependent Bonneville
   lag (guide analysis: median 8 h < 120 kcfs → ~20 h > 250 kcfs). Keep guide prose numbers in
   sync with the fit when refitting (prose says "September 2026 fit").
 
