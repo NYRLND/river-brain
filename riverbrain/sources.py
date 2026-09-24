@@ -168,26 +168,51 @@ def noaa_series(product: str, station: str, start, end, *, datum: str = "MLLW",
 
 
 # --- USACE ---------------------------------------------------------------------
+DATAQUERY = "https://www.nwd-wc.usace.army.mil/dd/common/web_service/webexec/getjson"
+
+
+def _dataquery_json(params: dict, tries: int = 4) -> str:
+    """Dataquery sometimes answers cloud IPs (e.g. GitHub runners) with HTTP 200 and an empty or
+    non-JSON body. Treat that as a transient failure and retry with backoff."""
+    for i in range(tries):
+        text = get(DATAQUERY, params, verify=ca_bundle()).text
+        try:
+            json.loads(text)
+            return text
+        except json.JSONDecodeError:
+            if i == tries - 1:
+                raise RuntimeError(f"Dataquery returned a non-JSON body ({len(text)} bytes) {tries} times")
+            time.sleep(3 * 2 ** i)
+
+
+def usace_dataquery_many(start, end, tsids: list[str], *, cache: Cache | None = None) -> dict[str, pd.Series]:
+    """Hourly values for several time series in one request per chunk (all at the same site)."""
+    start, end = _utc(start), _utc(end)
+    site = tsids[0].split(".")[0]
+    parts: dict[str, list] = {t: [] for t in tsids}
+    for a, b in _chunks(start, end, 366):
+        name = f"dq_{'+'.join(tsids)}_{a:%Y%m%dT%H}_{b:%Y%m%dT%H}.json"
+        d = json.loads(_cached(cache, name, lambda a=a, b=b: _dataquery_json(dict(
+            query=json.dumps(tsids), timezone="GMT",
+            startdate=f"{a:%m/%d/%Y %H:%M}", enddate=f"{b:%m/%d/%Y %H:%M}"))))
+        for tsid in tsids:
+            ts = d.get(site, {}).get("timeseries", {}).get(tsid)
+            if ts:
+                parts[tsid].append(pd.Series({v[0]: v[1] for v in ts["values"]}, dtype="float64"))
+    out = {}
+    for tsid, chunks in parts.items():
+        if not chunks:
+            out[tsid] = pd.Series(dtype="float64")
+            continue
+        s = pd.concat(chunks)
+        s.index = pd.to_datetime(s.index, utc=True)
+        out[tsid] = s[~s.index.duplicated()].sort_index()
+    return out
+
+
 def usace_dataquery(start, end, tsid: str = cfg.BON_TSID, *, cache: Cache | None = None) -> pd.Series:
     """Hourly values (kcfs for flows) from NWD Dataquery 2.0."""
-    start, end = _utc(start), _utc(end)
-    site = tsid.split(".")[0]
-    out = []
-    for a, b in _chunks(start, end, 366):
-        def fetch(a=a, b=b):
-            return get("https://www.nwd-wc.usace.army.mil/dd/common/web_service/webexec/getjson",
-                       dict(query=json.dumps([tsid]), timezone="GMT",
-                            startdate=f"{a:%m/%d/%Y %H:%M}", enddate=f"{b:%m/%d/%Y %H:%M}"),
-                       verify=ca_bundle()).text
-        d = json.loads(_cached(cache, f"dq_{tsid}_{a:%Y%m%dT%H}_{b:%Y%m%dT%H}.json", fetch))
-        ts = d.get(site, {}).get("timeseries", {}).get(tsid)
-        if ts:
-            out.append(pd.Series({v[0]: v[1] for v in ts["values"]}, dtype="float64"))
-    if not out:
-        return pd.Series(dtype="float64")
-    s = pd.concat(out)
-    s.index = pd.to_datetime(s.index, utc=True)
-    return s[~s.index.duplicated()].sort_index()
+    return usace_dataquery_many(start, end, [tsid], cache=cache)[tsid]
 
 
 def usace_cda(start, end, tsid: str = cfg.BON_TSID, *, cache: Cache | None = None) -> pd.Series:

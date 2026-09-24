@@ -45,16 +45,19 @@ def fetch_live(t_run: pd.Timestamp, features: list[str]) -> tuple[dict, dict]:
         "stage": attempt("stage", lambda: S.usgs_continuous(cfg.USGS_STAGE_SITE, "00065", start, end), err),
         "wil": attempt("willamette", lambda: S.usgs_continuous(cfg.USGS_WILLAMETTE_SITE, "00060", start, end), err),
         "pred": attempt("tide_predictions", lambda: S.noaa_series("predictions", cfg.NOAA_VANCOUVER, start, fut), err),
-        "dq": attempt("bonneville_dataquery", lambda: S.usace_dataquery(start, end), err),
         "cda": attempt("bonneville_cda", lambda: S.usace_cda(start, end), err),
-        "spill": attempt("bonneville_spill", lambda: S.usace_dataquery(start, end, cfg.BON_SPILL_TSID), err),
-        "gen": attempt("bonneville_generation", lambda: S.usace_dataquery(start, end, cfg.BON_GEN_TSID), err),
         "nwps": attempt("nwps", S.nwps_stageflow, err, default=(EMPTY, EMPTY, None)),
         "fish": attempt("fish", lambda: S.dart_adult_daily(t_run.year), err, default=pd.DataFrame()),
         "chem": {name: attempt(f"chem_{pc}", lambda pc=pc: S.usgs_continuous(
             cfg.USGS_WILLAMETTE_SITE, pc, t_run - pd.Timedelta(days=15), end), err)
             for pc, (name, _) in cfg.CHEM_PARAMS.items()},
     }
+    # Total, spill and powerhouse flow in one Dataquery request (fewer chances to hit its flakiness)
+    dq = attempt("bonneville_dataquery", lambda: S.usace_dataquery_many(
+        start, end, [cfg.BON_TSID, cfg.BON_SPILL_TSID, cfg.BON_GEN_TSID]), err, default={})
+    d["dq"] = dq.get(cfg.BON_TSID, EMPTY)
+    d["spill"] = dq.get(cfg.BON_SPILL_TSID, EMPTY)
+    d["gen"] = dq.get(cfg.BON_GEN_TSID, EMPTY)
     if "qs" in features:
         d["sandy"] = attempt("sandy", lambda: S.usgs_continuous(cfg.USGS_SANDY_SITE, "00060", start, end), err)
     if "surge" in features:
@@ -120,7 +123,10 @@ def run(t_run: pd.Timestamp, out_dir: Path, archive_dir: Path | None, raw: dict 
     recent_flags = bon_flags.loc[bon_flags.index > t_run - pd.Timedelta(days=30)] if len(bon_flags) else bon_flags
     qc_summary = {k: int(v) for k, v in recent_flags[["missing", "range", "spike", "flat", "filled"]].sum().items()} \
         if len(recent_flags) else {}
-    warn = [f"{k} fetch failed" for k in errors]
+    # Fetch errors are diagnostics (kept in now.json → qc.fetch_errors). The reader is only warned
+    # when a failure actually leaves data missing or stale; that comes from `freshness` below.
+    # E.g. Dataquery failing while CWMS fills in is invisible to the reader, as it should be.
+    warn = []
     names = {"bon": "Bonneville", "wil": "Willamette", "sandy": "Sandy River", "surge": "Astoria surge"}
     warn += [f"No {names[c]} data at all: its effect is held at a typical value and shows no change." for c in held]
     if qc_summary.get("range") or qc_summary.get("spike") or qc_summary.get("flat"):

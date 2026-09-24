@@ -88,3 +88,14 @@ def test_run_holds_missing_source_at_typical_value(raw, tmp_path):
     assert now["why_it_moved"]["6h"]["components_ft"]["willamette"] == 0
     assert any("No Willamette data" in w for w in now["warnings"])
     assert all(np.isfinite(h["stage_ft"]) for h in now["forecast"]["hours"])
+
+
+def test_fallback_source_failure_is_not_shown_to_reader(raw, tmp_path):
+    """Dataquery down but CWMS has the data: no warning banner, error kept for diagnostics."""
+    t_run = pd.Timestamp("2026-02-10 00:20", tz="UTC")
+    raw["stage"] = raw["stage"][raw["stage"].index <= t_run]
+    raw["cda"], raw["dq"] = raw["dq"][raw["dq"].index <= t_run] / 1.0, EMPTY
+    now = run(t_run, tmp_path, None, raw=raw, errors={"bonneville_dataquery": "JSONDecodeError"}, coef=fake_coef())["now.json"]
+    assert not [w for w in now["warnings"] if "bonneville" in w.lower() or "fetch failed" in w.lower()]
+    assert now["freshness"]["bonneville"]["status"] == "ok"
+    assert now["qc"]["fetch_errors"] == {"bonneville_dataquery": "JSONDecodeError"}
