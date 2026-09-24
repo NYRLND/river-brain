@@ -23,7 +23,8 @@ Status key: ✅ data source verified live · 🔎 exists but endpoint or name st
 * Current stage, trend arrow, rate (ft/h), next high/low water (time and height).
   ✅ USGS, 🧮 model
 * **"Why it moved" bar:** the last 3 h, 6 h or 24 h change split into tide / Bonneville /
-  Willamette / spring–neap / unexplained. Signed bars that sum to the observed change. 🧮
+  Willamette / Sandy River and local streams / spring–neap / ocean (Astoria surge) /
+  unexplained. Signed bars that sum to the observed change. 🧮 (`now.json → why_it_moved`, live)
 * **"Already in the pipe":** Bonneville takes ~12 h to arrive, so the last 12 h of dam
   releases tell us what's coming. For example: "Dam cut 20 kcfs at 3 am; expect −0.3 ft
   arriving around 3 pm." ✅ Dataquery, 🧮
@@ -145,11 +146,11 @@ fDOM, chlorophyll (fChl), phycocyanin (fPC), suspended sediment and load.
 * **Front end:** a static PWA with a small time-series chart library (uPlot, ~45 KB) for
   interactive plots. A service worker caches the last JSON for offline viewing.
 * One color per physical component, everywhere (tide blue, Bonneville orange, Willamette
-  aqua, spring–neap violet, ocean magenta, unexplained gray), matching the notebook
-  figures.
+  aqua, Sandy River yellow, spring–neap violet, ocean magenta, unexplained gray), matching
+  the notebook figures.
 
 ## Suggested build order
-1. Production pipeline (fetch → QC → features → `now.json`) plus a multi-year model fit.
+1. ~~Production pipeline (fetch → QC → features → `now.json`) plus a multi-year model fit.~~ Done (Phase 2).
 2. MVP UI: Now card, why-it-moved, next 48 h, model card.
 3. Component explorer, travel-time visualizer, dam operations.
 4. Fish + chemistry panels (data is already verified; mostly UI work).

@@ -4,11 +4,107 @@ A gift PWA that explains why the Columbia River under a floating home on Hayden 
 (Portland, OR) is rising or falling, splitting each change into **tide**, **Bonneville
 Dam release**, and **everything else**.
 
-**Status: Phase 1 (feasibility) complete.** The notebook is
-[`notebooks/01_feasibility.ipynb`](notebooks/01_feasibility.ipynb) (executed, with outputs).
-The app feature roadmap is in [`docs/feature-plan.md`](docs/feature-plan.md).
+**Status: Phase 2 (production pipeline) complete. Next: the app UI.**
+* Pipeline: the [`riverbrain/`](riverbrain) package, run hourly by GitHub Actions.
+* Model: [`model/fit_report.md`](model/fit_report.md) (5-year fit, cross-validation,
+  forecast skill).
+* Phase 1 feasibility study:
+  [`notebooks/01_feasibility.ipynb`](notebooks/01_feasibility.ipynb).
+* App roadmap: [`docs/feature-plan.md`](docs/feature-plan.md).
 
 ---
+
+## Phase 2: production pipeline
+
+### Results of the 5-year fit (Oct 2021 – Sep 2026, 43,414 hours)
+
+Validation is **leave one water year out**: each year is scored by a model whose
+coefficients *and* lag/kernel were chosen without seeing it. The model was selected by a rule
+written into the code before any results were seen.
+
+| model | held-out RMSE (ft) | R² |
+|---|---|---|
+| M0 tide + Bonneville (original spec) | 1.25 | 0.73 |
+| M5 Phase 1 pick (+ Willamette, flow-dependent tide, Q², spring–neap) | 0.57 | 0.94 |
+| M6 + Astoria storm surge | 0.46 | 0.96 |
+| **M8 + Sandy River (selected)** | **0.42** | **0.97** |
+| M10 all 14 terms | 0.42 | 0.97 (within 2% of M8, so the simpler M8 wins) |
+
+What changed since Phase 1, which only had summer data:
+* **Winter needs two more drivers.** Adding **Astoria storm surge** (ocean setup from wind
+  and pressure) cut error 20%. Adding the **Sandy River**, a rain-fed tributary entering
+  between Bonneville and Hayden Island, cut it another 8%. Its coefficient
+  (+1.0 ft per 10 kcfs) is large for its size, so it probably also stands in for other
+  local rain-fed streams. The app should label it that way.
+* **High flows are now in the training data.** Bonneville reached 459 kcfs, and the June
+  2022 flood crest at Hayden Island hit 16.5 ft, above NWS action stage. Held-out error
+  above 400 kcfs is 0.57 ft.
+* **Bonneville travel time: 12.5 h centroid** (τ = 1 h, 24-h kernel), consistent with
+  Phase 1.
+* **Rejected again:** overtide terms, the fast Bonneville kernel, and Willamette² (each
+  < 1% gain).
+
+**Forecast skill** (48-h hindcasts every 12 h through each held-out year, using only data
+available at the time):
+
+| lead | 1 h | 6 h | 12 h | 24 h | 48 h |
+|---|---|---|---|---|---|
+| model RMSE (ft) | 0.24 | 0.37 | 0.42 | 0.51 | 0.79 |
+| NOAA tide table + today's offset | 0.44 | 0.44 | 0.56 | 0.70 | 0.95 |
+
+![Forecast skill](model/figures/forecast_skill.png)
+
+**Known weakness, and the next model improvement.** At low flow, ~20% of a 3–6 h change is
+typically unexplained (median 0.26 ft). The residual averages +0.15 ft on rising tides and
+~0 on falling ones. That's flood–ebb asymmetry (the tide rises faster than it falls), which
+the overtide terms don't capture across all flows. The candidate to test next is overtides ×
+low flow.
+
+### How it runs
+
+```
+python -m riverbrain.fit   # offline, ~45 min with cache: fetch 5 yrs → CV → select → fit → hindcast
+                           #   → model/coefficients.json + model/fit_report.md
+python -m riverbrain.run   # hourly, ~1 min: fetch last 34 days (+16 d tide predictions) → QC →
+                           #   apply model → site/data/{now,history_30d,model,fish,chem}.json
+python -m pytest           # 17 offline tests (causality, attribution closure, strict JSON, …)
+```
+
+`now.json` contains:
+* current stage and trend;
+* **why it moved** over the last 3, 6 and 24 h, split by component, always including
+  "unexplained";
+* **what's in the pipe** from Bonneville;
+* the next highs and lows;
+* a 48-h forecast with a 5–95% band from hindcast errors;
+* the NWS forecast shifted to the USGS datum, with flood stages;
+* drivers: tide gain and timing vs NOAA, spring–neap state and next spring/neap, and
+  flows;
+* per-source freshness and warnings.
+
+**Graceful degradation.**
+* A failing source is recorded and the run continues.
+* A flow source missing for the whole window is held at its training median; its component
+  then shows no change, with a warning.
+* If the whole run fails, the previous deploy stays up.
+
+### Deploying (needs you)
+
+1. Create a GitHub repo and push. In **Settings → Pages**, set the source to **GitHub
+   Actions**.
+2. Get a free **USGS API key** at api.waterdata.usgs.gov and add it as the repo secret
+   `USGS_API_KEY`. Anonymous use is limited to 1,000 requests per hour per IP, GitHub
+   runners share IPs, and we hit that limit twice while fitting.
+3. Workflows: `hourly.yml` (at :17 each hour: run → append the forecast archive to the
+   orphan `archive` branch → deploy Pages), `refit.yml` (manual: fit → tests → opens a PR
+   for review), and `ci.yml` (tests on push).
+
+`site/index.html` is a placeholder that shows the live JSON. The real UI is the next
+phase.
+
+---
+
+# Phase 1: feasibility (Sep 2026)
 
 ## TL;DR
 

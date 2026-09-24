@@ -1,0 +1,43 @@
+name: Refit model
+
+# Manual: fits on ~5 water years, runs tests, and opens a PR with the new coefficients and
+# fit report so a human reviews the change before the hourly job uses it.
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "Training start (YYYY-MM-DD)"
+        default: "2021-10-01"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Fit
+        env:
+          USGS_API_KEY: ${{ secrets.USGS_API_KEY }}
+        run: python -m riverbrain.fit --start "${{ inputs.start }}"
+      - run: python -m pytest -q
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="refit-$(date -u +%Y%m%d-%H%M)"
+          git config user.name "river-brain-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add model
+          git commit -m "Refit model $(date -u +%F)"
+          git push origin "$branch"
+          gh pr create --title "Model refit $(date -u +%F)" --body-file model/fit_report.md

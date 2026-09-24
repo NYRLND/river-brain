@@ -18,16 +18,30 @@ engineer): **accuracy and method transparency matter more than polish.**
   JSON → a static PWA on GitHub Pages reads it.
 
 ## Status
-* **Phase 1 (feasibility): done.** See `README.md` (findings, recommended production
-  approach) and `notebooks/01_feasibility.ipynb`.
-* **Next:** the production pipeline plus a multi-year model fit, then the MVP UI. The
-  feature roadmap is in `docs/feature-plan.md`.
+* **Phase 1 (feasibility): done.** `notebooks/01_feasibility.ipynb`, README "Phase 1".
+* **Phase 2 (production pipeline): done.** `riverbrain/` package, 5-year fit
+  (`model/fit_report.md`), hourly run verified live 2026-09-24, workflows written. **Not yet
+  pushed**: there is no GitHub remote yet, so ask before creating or pushing one.
+* **Next:** the MVP UI (static PWA in `site/`, reading `site/data/*.json`); see
+  `docs/feature-plan.md`. Model to-do: overtides × low-flow for flood–ebb asymmetry.
 
 ## Repo layout
 ```
-notebooks/01_feasibility.py     jupytext percent source (EDIT THIS, then regenerate the .ipynb)
+riverbrain/config.py            site IDs, thresholds, run windows
+riverbrain/sources.py           fetchers (optional Cache; USGS_API_KEY env; USACE CA bundle)
+riverbrain/qc.py                Bonneville QC + Dataquery/CDA merge
+riverbrain/signal.py            godin, analytic (Hilbert), fill_short_gaps, trailing_mean, hold_last
+riverbrain/features.py          build_inputs + build_features: the ONE feature definition (fit = hindcast = live)
+riverbrain/model.py             OLS, grid search, components, forecast, hindcast, strict JSON
+riverbrain/fit.py / report.py   offline fit → model/coefficients.json + model/fit_report.md
+riverbrain/run.py / outputs.py  hourly run → site/data/*.json (+ forecast archive)
+model/                          fitted coefficients + report (committed; refit via PR)
+site/index.html                 placeholder page; site/data/ is generated (gitignored)
+tests/                          offline pytest suite (synthetic data)
+.github/workflows/              hourly.yml, refit.yml, ci.yml
+notebooks/01_feasibility.py     Phase 1 jupytext source (EDIT THIS, then regenerate the .ipynb)
 notebooks/01_feasibility.ipynb  executed notebook (committed with outputs)
-notebooks/sources.py            fetchers for every source; cache to data/raw/ (gitignored)
+notebooks/sources.py            Phase 1 fetchers, frozen for reproducibility (production code is riverbrain/)
 certs/                          DigiCert intermediate for the USACE Dataquery TLS chain
 docs/figures/                   PNGs saved by the notebook (used in README)
 docs/feature-plan.md            app feature roadmap
@@ -54,29 +68,42 @@ docs/feature-plan.md            app feature roadmap
 USGS gage datum = NGVD29 + 1.82 ft. NWPS stage ≈ USGS + 0.13 ft (flood stages 15/16/20/25 ft
 are NWPS datum). NOAA MLLW ≈ USGS − 1.69 ft. Always state which datum a number is in.
 
-## Model decisions (from Phase 1)
-* Recommended **M5**: flow-dependent tide (NOAA oscillation T and its Hilbert quadrature,
-  each × trailing-24h Bonneville mean) + Bonneville via a trailing 24-h kernel (+ Q²) +
-  Willamette (trailing 25-h mean) + spring–neap setup (Godin-filtered tidal envelope).
-  Season out-of-sample R² 0.92, RMSE 0.34 ft.
-* Bonneville → Vancouver centroid lag ≈ 12 h (± 3).
+## Model decisions
+* **Production model M8** (5-year fit, leave-one-water-year-out CV RMSE 0.42 ft, R² 0.97):
+  flow-dependent tide (T, HT, each also × trailing-24h Bonneville/100) + Bonneville
+  trailing-24h kernel (τ = 1 h) + Q² + Willamette (trailing 25-h mean) + spring–neap
+  (Godin-filtered tidal envelope) + Astoria surge (trailing 25-h mean) + Sandy River
+  (trailing 12-h mean; probably also a proxy for other local rain-fed streams, so say so in the UI).
+* Model selection is by the pre-declared `SELECTION_RULE` in `fit.py`: never hand-pick after
+  seeing results. New candidate terms go into `MODELS` and compete.
+* Bonneville → Vancouver centroid lag ≈ 12.5 h.
+* Forecast: flows persist from their last observation; the current error (mean over 3 h)
+  decays with an e-folding time of 48 h (chosen by hindcast). The band is the 5–95% hindcast
+  error at each lead.
 * **All flow features must be causal (trailing windows).** Only tide-derived terms may use
   future predictions.
 * Attributions are presented as *changes* over 3/6/24 h (levels need a reference, deltas
   don't). Always show "unexplained".
-* Rejected or deferred: single-hour lag, flow-dependent spring–neap (M5b), Astoria surge
-  (M6, overfits summer data; re-test with winter data), USGS 72137.
-* Production should fit on 2–3+ years offline → `coefficients.json`; the hourly job only
-  applies coefficients.
+* Rejected: single-hour lag, flow-dependent spring–neap, overtides, fast Bonneville kernel,
+  Willamette² (each < 1% CV gain), USGS 72137 (36 h latency).
 
 ## Conventions
 * Store everything in UTC; display in America/Los_Angeles. Stage in ft, flow in kcfs.
 * One color per component everywhere (notebook and app): tide `#2a78d6`, Bonneville
   `#eb6834`, Willamette `#1baf7a`, spring–neap `#4a3aa7`, ocean `#e87ba4`, unexplained gray.
-* Bonneville QC: `qc_flow()` in the notebook (range, spike, flatline, fill gaps ≤ 3 h only).
+* Sandy River component color: `#eda100`.
+* Bonneville QC: `riverbrain/qc.py` (range, spike, flatline, fill gaps ≤ 3 h only).
+* JSON outputs must be strict (no NaN/Infinity): always write through `model.save`/`dumps`.
+* Timestamps in JSON: ISO UTC with `Z`, seconds precision (tide times to the minute).
+
+## Rate limits
+USGS Water Data API: 1,000 requests/hour/IP anonymous (we hit it twice fitting). The fit waits
+out `Retry-After` and resumes from the cache in `data/raw/fit/`. Set `USGS_API_KEY`.
+The hourly run makes about 12 USGS requests.
 
 ## Local environment quirks (Windows)
 * Windows Application Control blocks SciPy's DLLs and the venv `Scripts\*.exe` launchers.
   Run tools as `.venv/Scripts/python -m jupytext|nbconvert|pip …`. Don't add SciPy (a numpy
-  FFT Hilbert transform is in the notebook). Don't try to change the security setting.
+  FFT Hilbert transform is in `riverbrain/signal.py`). Don't try to change the security setting.
+* Tests: `.venv/Scripts/python -m pytest -q`. Preview the site: `.claude/launch.json` config "site".
 * Regenerate the notebook: `cd notebooks && ../.venv/Scripts/python -m jupytext --to ipynb 01_feasibility.py && ../.venv/Scripts/python -m nbconvert --to notebook --execute --inplace 01_feasibility.ipynb`
