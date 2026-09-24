@@ -114,6 +114,8 @@ async function renderNow(v) {
     actionUsgs != null ? h("div", { class: "faint" },
       `${(actionUsgs - n.now.stage_ft).toFixed(1)} ft below the NWS "action" stage. Heights are on the USGS gauge datum.`) : null));
 
+  const sb = staleBanner(n);
+  if (sb) v.append(sb);
   for (const w of n.warnings || []) v.append(h("div", { class: "banner", role: "status" }, "⚠ ", w));
 
   // Why it moved
@@ -174,13 +176,27 @@ async function renderNow(v) {
 const SOURCE_NAMES = { stage: "River level (USGS)", bonneville: "Bonneville (USACE)", willamette: "Willamette (USGS)",
   sandy: "Sandy River (USGS)", astoria: "Astoria (NOAA)", tide_predictions: "Tide predictions (NOAA)",
   nwps_forecast: "NWS forecast", fish: "Fish counts (DART)", chemistry: "Water quality (USGS)" };
+// Same thresholds as riverbrain/config.py STALE_HOURS, re-checked in the browser so an old page
+// never claims its data is fresh.
+const STALE_H = { stage: 2, bonneville: 6, willamette: 3, sandy: 3, astoria: 3, nwps_forecast: 12, fish: 72, chemistry: 6 };
+function liveStatus(k, f) {
+  if (f.status === "missing" || !f.latest) return f.status;
+  return (Date.now() - ms(f.latest)) / 3.6e6 > (STALE_H[k] ?? 6) ? "stale" : "ok";
+}
+function staleBanner(n) {
+  const hrs = (Date.now() - ms(n.generated)) / 3.6e6;
+  return hrs > 1.5 ? h("div", { class: "banner", role: "status" },
+    `⚠ This page's data was last updated ${ago(n.generated)}. The hourly update may be delayed; numbers below are from then.`) : null;
+}
 function freshnessCard(n) {
   const icon = { ok: "✓", stale: "!", missing: "×" };
   return h("div", { class: "card" }, h("div", { class: "card-head" }, h("h3", {}, "Data freshness"),
     h("span", { class: "faint", style: { fontSize: ".82rem" } }, `Updated ${ago(n.generated)}`)),
-    h("div", { class: "fresh" }, Object.entries(n.freshness).map(([k, f]) =>
-      h("span", { class: `status ${f.status}` }, h("i", { "aria-hidden": "true" }, icon[f.status] || "?"),
-        `${SOURCE_NAMES[k] || k}: ${f.status === "ok" ? (f.latest ? ago(f.latest) : "ok") : f.status}`))));
+    h("div", { class: "fresh" }, Object.entries(n.freshness).map(([k, f]) => {
+      const st = liveStatus(k, f);
+      return h("span", { class: `status ${st}` }, h("i", { "aria-hidden": "true" }, icon[st] || "?"),
+        `${SOURCE_NAMES[k] || k}: ${f.latest ? ago(f.latest) : st}${st === "stale" ? " (stale)" : ""}`);
+    })));
 }
 
 // ---------- FORECAST ----------
@@ -481,5 +497,18 @@ async function route() {
 }
 window.addEventListener("hashchange", route);
 route();
-load("now").then(n => { $("#updated").textContent = `Updated ${ago(n.generated)}`; }).catch(() => {});
+const tickUpdated = () => load("now").then(n => { $("#updated").textContent = `Updated ${ago(n.generated)}`; }).catch(() => {});
+tickUpdated();
+setInterval(tickUpdated, 60_000);
+// A page left open (or reopened from the home screen) refetches when it comes back into view.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  load("now").then(n => {
+    if (Date.now() - ms(n.generated) < 15 * 60_000) return;
+    for (const k of Object.keys(cache)) delete cache[k];
+    rendered.clear();
+    route();
+    tickUpdated();
+  });
+});
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

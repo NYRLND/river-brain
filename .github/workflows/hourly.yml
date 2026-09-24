@@ -2,7 +2,9 @@ name: Hourly update
 
 on:
   schedule:
-    - cron: "17 * * * *"   # :17 past each hour (GitHub delays jobs at :00); runs may lag or skip under load
+    # Twice an hour: GitHub's scheduler is best-effort and can skip or delay runs, so a second
+    # slot keeps data fresh. Off-peak minutes (not :00). A re-run within the same hour is harmless.
+    - cron: "17,47 * * * *"
   workflow_dispatch:
 
 permissions:
