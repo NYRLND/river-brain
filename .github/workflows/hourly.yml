@@ -2,8 +2,9 @@ name: Hourly update
 
 on:
   schedule:
-    # Twice an hour: GitHub's scheduler is best-effort and can skip or delay runs, so a second
-    # slot keeps data fresh. Off-peak minutes (not :00). A re-run within the same hour is harmless.
+    # Primary trigger is external: cron-job.org calls the workflow_dispatch API at :00 and :30
+    # (GitHub's scheduler never fired for this repo in its first hours). This schedule is kept
+    # as a backup; an extra run is harmless (same data, archive skips duplicates).
     - cron: "17,47 * * * *"
   workflow_dispatch:
 

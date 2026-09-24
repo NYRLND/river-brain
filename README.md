@@ -107,8 +107,10 @@ python -m pytest           # 17 offline tests (causality, attribution closure, s
 2. Get a free **USGS API key** at api.waterdata.usgs.gov and add it as the repo secret
    `USGS_API_KEY`. Anonymous use is limited to 1,000 requests per hour per IP, GitHub
    runners share IPs, and we hit that limit twice while fitting.
-3. Workflows: `hourly.yml` (at :17 each hour: run → append the forecast archive to the
-   orphan `archive` branch → deploy Pages), `refit.yml` (manual: fit → tests → opens a PR
+3. Workflows: `hourly.yml` (run → append the forecast archive to the orphan `archive`
+   branch → deploy Pages). It's triggered at :00 and :30 by an external timer
+   (cron-job.org calling the `workflow_dispatch` API with a repo-scoped fine-grained token),
+   because GitHub's own scheduler proved unreliable; its `schedule` is kept as a backup, `refit.yml` (manual: fit → tests → opens a PR
    for review), and `ci.yml` (tests on push).
 
 ### The app (`site/`)

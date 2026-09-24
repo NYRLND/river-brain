@@ -1,6 +1,6 @@
 // Offline support. Network-first for everything (so a new deploy shows up on the next visit),
 // falling back to the last good copy when offline. Data pages show how old their data is.
-const CACHE = "rb-v4";
+const CACHE = "rb-v5";
 const SHELL_FILES = ["./", "index.html", "app.css", "app.js", "chart.js", "config.js", "guide.html", "guide.js",
   "icon.svg", "manifest.webmanifest"];
 

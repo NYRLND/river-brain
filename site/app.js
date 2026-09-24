@@ -504,11 +504,12 @@ setInterval(tickUpdated, 60_000);
 // ---------- refresh: pull-down gesture, ↻ button, and on reopen ----------
 // Refreshing fetches the newest *published* data. It can't make the hourly job run sooner
 // (that would need a GitHub credential in the page), so if nothing is newer we say when the
-// next update is due. The job runs at :17 and :47 and takes about a minute.
+// next update is due. An external timer (cron-job.org) starts the job at :00 and :30; it takes
+// about a minute to run and publish.
 function nextUpdate() {
   const d = new Date();
   const m = d.getUTCMinutes();
-  const slot = m < 19 ? 19 : m < 49 ? 49 : 79;          // :17/:47 + ~2 min to run and publish
+  const slot = m < 2 ? 2 : m < 32 ? 32 : 62;
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), slot));
 }
 function toast(text) {

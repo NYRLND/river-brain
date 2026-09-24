@@ -31,6 +31,11 @@ engineer): **accuracy and method transparency matter more than polish.**
   config); never commit the user's personal email. `gh` is at
   "C:\Program Files\GitHub CLI\gh.exe" (may not be on PATH in older shells).
   USGS_API_KEY secret: not yet set (the user adds it; never handle the key).
+* **Update trigger:** GitHub's `schedule` never fired for this repo (5 slots missed on day 1),
+  so cron-job.org (user's account) POSTs to the workflow_dispatch API at :00 and :30 with a
+  fine-grained PAT (NYRLND/river-brain only, Actions read/write). The token is stored only at
+  cron-job.org; it expires within a year and must be renewed (cron-job.org emails on failure).
+  The workflow's own cron (:17/:47) is kept as a backup. `nextUpdate()` in app.js assumes :00/:30.
 * **Next:** Tier 2 items in `docs/feature-plan.md`. Model to-dos: overtides × low-flow for flood–ebb asymmetry; flow-dependent Bonneville
   lag (guide analysis: median 8 h < 120 kcfs → ~20 h > 250 kcfs). Keep guide prose numbers in
   sync with the fit when refitting (prose says "September 2026 fit").
