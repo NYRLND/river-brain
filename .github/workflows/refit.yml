@@ -28,6 +28,8 @@ jobs:
         env:
           USGS_API_KEY: ${{ secrets.USGS_API_KEY }}
         run: python -m riverbrain.fit --start "${{ inputs.start }}"
+      - name: Refresh the guide's figures and travel-time data
+        run: python scripts/make_guide_data.py
       - run: python -m pytest -q
       - name: Open pull request
         env:
@@ -37,7 +39,7 @@ jobs:
           git config user.name "river-brain-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
-          git add model
+          git add model site/guide
           git commit -m "Refit model $(date -u +%F)"
           git push origin "$branch"
           gh pr create --title "Model refit $(date -u +%F)" --body-file model/fit_report.md

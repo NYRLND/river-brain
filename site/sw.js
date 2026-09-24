@@ -1,7 +1,8 @@
 // Offline support. Network-first for everything (so a new deploy shows up on the next visit),
 // falling back to the last good copy when offline. Data pages show how old their data is.
-const CACHE = "rb-v2";
-const SHELL_FILES = ["./", "index.html", "app.css", "app.js", "chart.js", "icon.svg", "manifest.webmanifest"];
+const CACHE = "rb-v3";
+const SHELL_FILES = ["./", "index.html", "app.css", "app.js", "chart.js", "config.js", "guide.html", "guide.js",
+  "icon.svg", "manifest.webmanifest"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL_FILES)).then(() => self.skipWaiting()));

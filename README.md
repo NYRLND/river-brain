@@ -7,6 +7,11 @@ Dam release**, and **everything else**.
 **Status: Phase 3 (app UI) built; deploying to GitHub Pages.**
 * App: [`site/`](site), a static PWA with no framework or build step. Its six views are
   Now · Forecast · Explore · Fish · Chemistry · Method.
+* **Guide:** [`site/guide.html`](site/guide.html), a long-form explanation for the reader:
+  data sources and their quirks, the physics of each driver, how the model was found and
+  tested, forecasting, limitations and architecture. It includes an interactive travel-time
+  explorer. Its figures and data come from `python scripts/make_guide_data.py`, which the
+  refit workflow runs.
 * Pipeline: the [`riverbrain/`](riverbrain) package, run hourly by GitHub Actions.
 * Model: [`model/fit_report.md`](model/fit_report.md) (5-year fit, cross-validation,
   forecast skill).
@@ -55,6 +60,11 @@ available at the time):
 | NOAA tide table + today's offset | 0.44 | 0.44 | 0.56 | 0.70 | 0.95 |
 
 ![Forecast skill](model/figures/forecast_skill.png)
+
+**Found while writing the guide: travel time depends on flow.** Band-passed cross-correlation
+of the dam-driven level against Bonneville outflow, over 99 thirty-day windows, gives a median
+lag of 8 h below 120 kcfs, 11–12 h at typical flows and ~20 h above 250 kcfs (correlation 0.47).
+A flow-dependent Bonneville kernel is a candidate for the next refit.
 
 **Known weakness, and the next model improvement.** At low flow, ~20% of a 3–6 h change is
 typically unexplained (median 0.26 ft). The residual averages +0.15 ft on rising tides and

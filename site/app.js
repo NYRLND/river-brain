@@ -1,8 +1,7 @@
 // River Brain app: reads data/*.json (written hourly by the GitHub Action) and renders six views.
 // Everything taken from data is inserted with textContent, never innerHTML.
 import { legend, lineChart } from "./chart.js";
-
-const REPO = "https://github.com/"; // set to the repository URL after it is created
+import { REPO } from "./config.js";
 const TZ = "America/Los_Angeles";
 const COMP = {
   tide: { label: "Tide", color: "var(--c-tide)",
@@ -407,6 +406,9 @@ async function renderMethod(v) {
   v.textContent = "";
   const terms = Object.entries(m.coef);
   const eq = "stage = " + terms.map(([k, c], i) => `${i ? (c < 0 ? " − " : " + ") : ""}${Math.abs(c).toFixed(4)}${k === "const" ? "" : "·" + k}`).join("");
+  v.append(h("div", { class: "card", style: { borderColor: "var(--accent)" } }, h("h2", {}, "The full story"),
+    h("p", {}, "This tab is the short model card. The ", h("a", { href: "guide.html" }, "River Brain guide"),
+      " explains everything in depth: each data source and its quirks, the physics of every driver, how the model was found and tested, and what it can't do yet.")));
   v.append(h("div", { class: "card" }, h("h2", {}, "How River Brain works"),
     h("p", {}, "Every hour, a free GitHub Action fetches the river level, NOAA tide predictions, Bonneville Dam releases, tributary flows and Astoria sea level; checks them for bad values; and applies a statistical model fitted to five years of history. Each driver's contribution is the model term for it, so the bars on the Now tab always add up to the observed change (with whatever the model misses shown as “unexplained”)."),
     h("p", {}, "The model is ordinary least squares on physically motivated terms:"),
@@ -451,8 +453,9 @@ async function renderMethod(v) {
   ];
   v.append(h("div", { class: "card" }, h("h2", {}, "Data sources"),
     h("ul", {}, src.map(([t, u]) => h("li", {}, h("a", { href: u, target: "_blank", rel: "noopener" }, t)))),
-    h("p", { class: "muted" }, `Model fitted ${fDate.format(ms(m.fitted_utc))}. Full fit report, notebook and code: `,
-      h("a", { href: REPO, target: "_blank", rel: "noopener" }, "GitHub repository"), ".")));
+    h("p", { class: "muted" }, `Model fitted ${fDate.format(ms(m.fitted_utc))}. `,
+      h("a", { href: "guide.html" }, "Read the full guide"), ": where the data comes from, how the model was found, and its limits",
+      REPO ? [". Code, notebook and fit report: ", h("a", { href: REPO, target: "_blank", rel: "noopener" }, "GitHub repository")] : null, ".")));
   v.append(freshnessCard(n));
 }
 

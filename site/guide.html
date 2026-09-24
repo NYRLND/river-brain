@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>River Brain Guide</title>
+<meta name="description" content="Where River Brain's data comes from, the physics of each driver, how the model was found and tested, and what it can't do yet.">
+<meta name="theme-color" content="#f4f3f0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="app.css">
+<style>.diagram-wrap { overflow-x: auto; margin: 14px 0; } .diagram-wrap svg { min-width: 640px; }</style>
+<script type="module" src="guide.js"></script>
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});</script>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand"><b>River Brain</b><span class="faint">Guide</span></div>
+    <nav class="tabs" aria-label="Views">
+      <a href="./#now">Now</a>
+      <a href="./#forecast">Forecast</a>
+      <a href="./#explore">Explore</a>
+      <a href="./#fish">Fish</a>
+      <a href="./#chemistry">Chemistry</a>
+      <a href="./#method">Method</a>
+      <a href="guide.html" aria-current="page">Guide</a>
+    </nav>
+  </div>
+</header>
+
+<article class="article">
+<h1>How River Brain works</h1>
+<p class="lede">The data, the physics and the five years of river history behind every number in the app, including what didn't work and what it still can't do.</p>
+<p class="meta">About a 25-minute read · Model fitted <span id="live-fitted">September 2026</span> · Numbers in the text are from the September 2026 fit; the tables marked “live” update whenever the model is refit.</p>
+
+<div class="stats" aria-label="By the numbers">
+  <div class="stat"><div class="v">2.23 million</div><div class="l">measurements used to fit the model</div></div>
+  <div class="stat"><div class="v">5 years</div><div class="l">of hourly river history (43,414 hours), including two big spring floods</div></div>
+  <div class="stat"><div class="v">15,456</div><div class="l">model fits tried while choosing the lags and the terms</div></div>
+  <div class="stat"><div class="v">≈ 3,600</div><div class="l">48-hour forecasts replayed against what really happened</div></div>
+  <div class="stat"><div class="v">0.42 ft</div><div class="l">typical error on years the model never saw (R² 0.97)</div></div>
+  <div class="stat"><div class="v">$0</div><div class="l">per month to run: public data, free hosting, no paid services</div></div>
+</div>
+
+<nav class="toc" aria-label="Contents"><b>Contents</b>
+<ol>
+  <li><a href="#question">The question</a></li>
+  <li><a href="#data">Where the data comes from</a></li>
+  <li><a href="#qc">Checking the data</a></li>
+  <li><a href="#physics">Six things that move the river</a></li>
+  <li><a href="#model">How the model was found</a></li>
+  <li><a href="#forecast">Forecasting</a></li>
+  <li><a href="#attribution">How “why it moved” works</a></li>
+  <li><a href="#limits">What it can't do (yet)</a></li>
+  <li><a href="#engineering">How it's built</a></li>
+  <li><a href="#timeline">How it came together</a></li>
+  <li><a href="#glossary">Glossary</a></li>
+</ol>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="question"><span class="n">1</span>The question</h2>
+<p>The house floats on the Columbia at about river mile 106, directly across the channel from the U.S. Geological Survey's Vancouver gauge. That stretch of river is neither a plain river nor an estuary but both at once. It drains roughly a quarter-million square miles of the Northwest, yet it still rises and falls with the Pacific tide twice a day, more than a hundred miles from the ocean.</p>
+<p>At any moment the water level is the sum of several things happening at once: the tide, releases from Bonneville Dam 40 miles upstream, backwater from the Willamette, rain-fed local streams, the fortnightly spring–neap cycle and weather at the coast. River Brain measures each one separately, adds them up, and shows the result next to what the gauge actually measured. Whatever doesn't add up is reported as <em>unexplained</em> rather than quietly assigned to something else.</p>
+
+<div class="diagram-wrap">
+<svg class="diagram" viewBox="0 0 720 240" role="img" aria-labelledby="dg1t">
+  <title id="dg1t">Schematic of the lower Columbia River from the Pacific to Bonneville Dam, with river miles and the gauges River Brain uses</title>
+  <defs>
+    <marker id="aht" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--c-tide)"/></marker>
+    <marker id="ahb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--c-bonneville)"/></marker>
+    <marker id="ahw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--c-willamette)"/></marker>
+    <marker id="ahs" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--c-sandy)"/></marker>
+  </defs>
+  <path class="river" d="M30 120 L690 120"/>
+  <!-- tide: ocean pushes upriver -->
+  <path class="flow-tide" d="M45 92 L455 92"/>
+  <text x="140" y="84" class="sub">tide travels ~100 miles upriver, shrinking as river flow resists it</text>
+  <!-- dam releases -->
+  <path class="flow-bon" d="M662 148 L515 148"/>
+  <text x="530" y="166" class="sub">dam releases arrive in ~12½ h</text>
+  <!-- tributaries -->
+  <path class="flow-wil" d="M470 205 L470 128"/>
+  <path class="flow-sandy" d="M558 205 L558 128"/>
+  <!-- nodes -->
+  <circle class="node" cx="30" cy="120" r="6"/><text x="30" y="60" text-anchor="start">Pacific Ocean</text><text x="30" y="74" class="small">river mile 0</text>
+  <circle class="node" cx="109" cy="120" r="6"/><text x="109" y="190" text-anchor="middle">Astoria</text><text x="109" y="204" text-anchor="middle" class="small">NOAA tide gauge · surge</text>
+  <circle class="node" cx="470" cy="120" r="5"/><text x="462" y="222" text-anchor="end">Willamette joins (RM 101)</text><text x="462" y="235" text-anchor="end" class="small">USGS 14211720 at Portland</text>
+  <circle class="node home" cx="499" cy="120" r="8"/><text x="499" y="40" text-anchor="middle" font-weight="650">Hayden Island</text><text x="499" y="54" text-anchor="middle" class="small">USGS 14144700 · RM 106.5</text>
+  <line class="tick" x1="499" y1="60" x2="499" y2="110"/>
+  <circle class="node" cx="558" cy="120" r="5"/><text x="566" y="222">Sandy River (RM ~120)</text><text x="566" y="235" class="small">USGS 14142500</text>
+  <circle class="node" cx="672" cy="120" r="7"/><text x="690" y="60" text-anchor="end">Bonneville Dam</text><text x="690" y="74" text-anchor="end" class="small">RM 146 · Army Corps</text>
+</svg>
+</div>
+<p class="meta">Positions are drawn to scale by river mile (approximate). The Willamette actually enters about five miles <em>downstream</em> of Hayden Island, yet it still raises the water there by backing it up.</p>
+
+<!-- ============================================================ -->
+<h2 id="data"><span class="n">2</span>Where the data comes from</h2>
+<p>Everything comes from free, public, government or university sources. There are no paid services and no AI running at app time. Every hour an automated job pulls the latest of each:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>What</th><th>Source</th><th>How often</th><th>Used for</th></tr></thead>
+<tbody>
+<tr><td>River level at Vancouver</td><td>USGS gauge 14144700</td><td>every 15 min</td><td>the thing we explain</td></tr>
+<tr><td>Tide predictions, Vancouver</td><td>NOAA CO-OPS 9440083</td><td>every 6 min, 16 days ahead</td><td>the tide driver</td></tr>
+<tr><td>Bonneville Dam outflow (total, spill, powerhouse)</td><td>U.S. Army Corps of Engineers (Dataquery, with CWMS as backup)</td><td>hourly</td><td>the dam driver</td></tr>
+<tr><td>Willamette flow and water quality at Portland</td><td>USGS 14211720</td><td>every 5–15 min</td><td>backwater driver; Chemistry tab</td></tr>
+<tr><td>Sandy River flow</td><td>USGS 14142500</td><td>every 15 min</td><td>local-streams driver</td></tr>
+<tr><td>Astoria observed and predicted sea level</td><td>NOAA CO-OPS 9439040</td><td>every 6 min</td><td>ocean (storm surge) driver</td></tr>
+<tr><td>Official river forecast</td><td>NWS Northwest River Forecast Center (gauge VAPW1)</td><td>a few times a day</td><td>comparison and flood stages</td></tr>
+<tr><td>Adult fish counts</td><td>Columbia River DART, University of Washington</td><td>daily</td><td>Fish tab</td></tr>
+</tbody></table></div>
+
+<h3>Problems we hit, and how they're handled</h3>
+<p>Real data is messy. Every item here was found by testing against the live services, not assumed:</p>
+<ul>
+<li><b>USGS is replacing its data service.</b> The long-standing one is being shut down in early 2027, so River Brain was built on the new Water Data API from day one. During development the new API moved from version 0 to version 1; the code uses version 1.</li>
+<li><b>USGS limits anonymous use to 1,000 requests an hour.</b> Fitting five years of data hit that limit twice. The fitting job now waits out the limit and resumes from its saved copy of what it already downloaded.</li>
+<li><b>The Army Corps server has a certificate misconfiguration.</b> It doesn't send the middle link of its security certificate chain, so strict software refuses to connect. Rather than switch security checks off, River Brain ships the missing public certificate (DigiCert) and verifies the connection properly.</li>
+<li><b>The Corps publishes Bonneville's flow through two systems.</b> Where both have data they agree to the digit, but the newer one was missing 73 hours in June 2026. River Brain uses Dataquery first and fills any holes from the other.</li>
+<li><b>The Willamette at Portland flows backwards.</b> Its 5-minute discharge goes negative on every flood tide. A 25-hour average gives the net downstream flow that actually matters.</li>
+<li><b>A “perfect” data series turned out to be unusable.</b> USGS publishes a tide-filtered discharge for both rivers, which looked ideal, but it runs about 36 hours behind real time because the filter needs data from both sides of each moment. The app can't wait 36 hours, so it isn't used.</li>
+<li><b>NOAA's Vancouver “tide” isn't only tide.</b> Its prediction includes an assumed <em>average</em> seasonal river, which falls about 0.8 ft from March to September. Used as-is, the river would be counted twice. River Brain strips that part out (section 4.1).</li>
+<li><b>DART lists a February 29th in every year</b> (a 10-year-average row, even in non-leap years). It's dropped.</li>
+<li><b>The NWS only publishes its current forecast</b>, not past ones, so nobody can check its track record after the fact. River Brain saves both forecasts, NWS's and its own, every hour from launch, so their accuracy can be compared over time.</li>
+<li><b>Three agencies, three different zeros.</b> The USGS gauge reads 1.82 ft above the NGVD29 datum. The NWS gauge reads 0.13 ft higher than USGS (flood stages are on the NWS scale), and NOAA's tidal datum (MLLW) sits 1.69 ft below USGS. These offsets were measured against each other, and every number in the app is on the USGS gauge's scale.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="qc"><span class="n">3</span>Checking the data</h2>
+<p>Dam telemetry is known to contain gaps and occasional bad values, so every hourly Bonneville value goes through four checks:</p>
+<ul>
+<li><b>Missing:</b> the hour is absent, or the value is null.</li>
+<li><b>Impossible:</b> below 10 or above 700 thousand cubic feet per second (kcfs). The dam's record is about 600 kcfs.</li>
+<li><b>Spike:</b> more than 25 kcfs (or six robust standard deviations) away from the 7-hour running median. Real operational changes are <em>steps</em>, which a median follows; one-hour blips aren't.</li>
+<li><b>Stuck:</b> the same value repeated for 8 or more hours, the signature of frozen telemetry.</li>
+</ul>
+<p>Flagged values are removed; gaps of three hours or less are filled by straight-line interpolation, and longer gaps are left empty. To prove the checks work, the test suite injects each kind of fault (a zero dropout, a +60 kcfs spike, a 12-hour stuck value, a −999 sentinel, a 2-hour hole and a 10-hour hole) and confirms every one is caught and handled correctly.</p>
+<p>Over five years of real data the checks flagged 19 hours as suspect spikes and found 3 missing hours; nothing was impossible or stuck. A typical spike was a two-hour dip from 198 to 158 kcfs and back. That could be a telemetry glitch, or real, such as a turbine unit tripping offline. It makes no practical difference: the model responds to a day-long average of the dam's flow, so a single odd hour barely registers.</p>
+
+<!-- ============================================================ -->
+<h2 id="physics"><span class="n">4</span>Six things that move the river</h2>
+
+<h3 id="tide">4.1 The tide, which the river reshapes</h3>
+<p>NOAA publishes tide predictions for Vancouver, made from harmonic analysis of decades of gauge records. They're the starting point, with two corrections.</p>
+<p><b>First, remove the part that isn't tide.</b> A <em>Godin filter</em> (three moving averages of 24, 24 and 25 hours, the standard way oceanographers separate tides from everything slower) splits NOAA's prediction into the tidal oscillation and a slow remainder. The remainder is NOAA's built-in assumption about the seasonal river, and it's discarded, because River Brain uses the actual river instead.</p>
+<figure><img src="guide/04_tide_split.png" alt="NOAA's Vancouver prediction for March to September 2026, and the same prediction with its slow seasonal part removed" loading="lazy">
+<figcaption>Top: NOAA's raw prediction (blue) and its slow part (black), which declines about 0.8 ft through the season and also wobbles every two weeks. Bottom: the pure tidal oscillation River Brain uses.</figcaption></figure>
+<p><b>Second, correct for today's river.</b> A big river flowing out resists the tide pushing in, so the tide that reaches Hayden Island depends on how much water is coming down. Comparing NOAA's predicted tide with the observed tide every three days through the 2026 season showed this clearly:</p>
+<figure><img src="guide/08_tide_vs_flow.png" alt="Scatter plots of observed-over-predicted tide amplitude, timing shift and error against Bonneville flow" loading="lazy">
+<figcaption>Each dot is a 3-day block in 2026. Left: the real tide is 1.4–1.9× NOAA's prediction at late-summer low flow, about equal near 170 kcfs, and about half at high flow (the correlation with flow is −0.94). Middle: at high flow it also arrives 20–45 minutes late. Right: the error from using NOAA's tide as-is.</figcaption></figure>
+<p>The model handles this by letting the tide's <em>size</em> and <em>timing</em> both vary with the last day's average Bonneville flow. Size is easy: multiply the tide by a number that depends on flow. Timing is subtler, and that's where a mathematical tool called the Hilbert transform comes in.</p>
+<div class="callout"><b class="t">Why a Hilbert transform?</b>
+Shifting a wave slightly later in time is the same as mixing it with a copy of itself shifted by a quarter-cycle (90°); cos(ωt − φ) = cos φ · cos ωt + sin φ · sin ωt. The Hilbert transform produces that quarter-cycle copy of NOAA's tide. A linear model can then learn how much of each to mix, and so learn a flow-dependent delay, without any trial-and-error search over timing.</div>
+
+<h3 id="bonneville">4.2 Bonneville Dam: forty miles and half a day</h3>
+<p>Bonneville's operators change its release hour by hour, following electricity demand (you can see weekday and weekend patterns) and fish-passage rules. A change at the dam doesn't arrive at Hayden Island all at once. It travels 40 miles and spreads out as it goes. The best fit across five years treats the river as responding to the <b>average of the dam's release over the previous 24 hours, starting one hour back</b>. The centre of that window is <b>12½ hours</b>, which is the app's “changes take about 12½ hours to arrive.”</p>
+<p>The response is also curved. At 80 kcfs, adding 10 kcfs raises Hayden Island about 0.22 ft; at 250 kcfs, about 0.29 ft; at 400 kcfs, about 0.36 ft. At low flow the ocean largely sets the level, while at high flow the river's own friction does.</p>
+
+<div class="card" id="explorer">
+  <h3 style="margin-top:0">Try it: find the travel time yourself</h3>
+  <p class="muted" id="ex-intro">Loading a 30-day stretch of real data…</p>
+  <div class="explorer-controls">
+    <label for="lag">Shift the dam's flow later by</label>
+    <input type="range" id="lag" min="0" max="36" step="1" value="0">
+    <span class="readout" id="lag-out">0 h</span>
+  </div>
+  <p class="readout" id="r-out" aria-live="polite"></p>
+  <div id="ex-chart"></div>
+  <div id="ex-xcorr"></div>
+  <p class="faint" style="font-size:.84rem" id="ex-note"></p>
+</div>
+
+<div class="callout learn"><b class="t">Something we learned writing this guide</b>
+Repeating that calculation on every 30-day window of the five years (<span id="n-windows">99</span> of them with a clear signal, after subtracting every other driver) shows that the travel time <em>isn't</em> constant: it lengthens as flow rises, from a median of about 8 hours below 120 kcfs, to 11–12 hours at typical flows, to about 20 hours above 250 kcfs.
+<div id="lag-scatter"></div>
+That's the opposite of what you might guess, since a flood usually moves faster in a bigger river. A plausible explanation: at low flow this tidal reach behaves like a long lake, where a change in inflow propagates partly as a fast long wave (roughly √(g·depth) ≈ 10 m/s here), whereas at high flow it behaves like a river, where a flood wave moves at roughly the water's speed and smears out. Two caveats: only 7 windows have flows above 250 kcfs, and big freshets have other slow changes happening at the same time. The current model uses one average response; a flow-dependent lag is a candidate for the next refit.</div>
+
+<h3 id="willamette">4.3 Willamette backwater</h3>
+<p>The Willamette enters about five miles <em>downstream</em> of Hayden Island, so its water never flows past the house, but it backs the Columbia up. The model finds about <b>+0.28 ft for every extra 10 kcfs</b> of Willamette flow. In winter the Willamette can top 150 kcfs, which makes this driver worth several feet on its own.</p>
+
+<h3 id="sandy">4.4 The Sandy River and local streams</h3>
+<p>The Sandy enters between Bonneville and Hayden Island, so its water isn't in the dam's numbers. It's rain-fed and flashy. Adding it cut the model's winter errors noticeably. Its coefficient is large for a small river (<b>about +1 ft per 10 kcfs</b>), which strongly suggests it's standing in for all the other rain-fed creeks that rise in the same storms (the Washougal and local runoff). The app labels this driver “Sandy River &amp; local streams” for that reason.</p>
+
+<h3 id="springneap">4.5 Spring–neap setup: the tide raises the average level</h3>
+<p>This is the least intuitive driver, and in early testing it turned out to be the most important. Every ~14.8 days the tides swing between big <em>spring</em> tides (near new and full moon) and small <em>neap</em> tides. In a river, big tides don't just swing higher and lower: through friction they <em>raise the average water level</em> for days at a time. It's a known effect in the Columbia estuary, and NOAA's own harmonic analysis contains it (a constituent called MSf, visible as the fortnightly wobble in the figure in 4.1).</p>
+<p>River Brain measures it from the size of the predicted tide, smoothed over a few days: <b>each extra 0.1 ft of tidal amplitude raises the mean level about 0.23 ft</b>. In the first round of testing, adding this single term cut the out-of-sample error roughly in half.</p>
+
+<h3 id="ocean">4.6 The ocean: storm surge at Astoria</h3>
+<p>Wind and low air pressure can hold the sea at Astoria a foot or more above its predicted tide for a day or two. River Brain measures that surge (observed minus predicted at Astoria, averaged over 25 hours) and finds that <b>1 ft of surge at Astoria raises Hayden Island about 0.75 ft</b>. This term looked useless in summer-only testing and turned out to matter a lot once winter storms were in the data. That's a good illustration of why the final model was tested on full years.</p>
+
+<!-- ============================================================ -->
+<h2 id="model"><span class="n">5</span>How the model was found</h2>
+
+<h3>5.1 First, a feasibility study</h3>
+<p>The starting idea was simple: water level = tide + Bonneville (with some travel delay) + everything else. A Jupyter notebook tested it on 30 days of data, then on the whole 2026 season. It fit well <em>in-sample</em> but failed the honest test: fitted on the first two-thirds of a period and asked to predict the last third, it explained only 53–68% of the variation and missed by 0.6–0.8 ft. The travel time it found jumped between 8 and 17 hours depending on the period, a sign that it wasn't really being measured.</p>
+<p>So the notebook built a <em>ladder</em> of models, adding one physically motivated term at a time and keeping score out-of-sample:</p>
+<figure><img src="guide/07_ladder.png" alt="Bar chart of in-sample and out-of-sample error for each model rung in three test periods" loading="lazy">
+<figcaption>Feasibility study, 2026 data. Blue bars are the honest out-of-sample errors. Most of the gain came from two terms: flow-dependent tide (M3) and spring–neap setup (M5).</figcaption></figure>
+
+<h3>5.2 Then, five years and a fair contest</h3>
+<p>One season can fool you. The production model was fit on five complete water years, October 2021 to September 2026: 43,414 hours, stage from −0.6 to 16.5 ft, and Bonneville from 70 to 459 kcfs, including the June 2022 flood that pushed Hayden Island above the NWS action stage.</p>
+<p>Two rules kept the process honest:</p>
+<ul>
+<li><b>Leave one year out.</b> Each water year was predicted by a model whose coefficients <em>and</em> travel-time settings were chosen without seeing that year. Every error quoted here is on data the model hadn't seen.</li>
+<li><b>Decide how to choose before seeing the results.</b> Nine candidate models (built from fourteen possible terms) competed under a rule written into the code beforehand: <i>lowest cross-validated error, but if a simpler model is within 2%, take the simpler one.</i> That stops the process from quietly favoring whatever looks best after the fact.</li>
+</ul>
+<div class="card"><div class="card-head"><h3 style="margin:0">The contest <span class="faint" style="font-weight:400">(live)</span></h3></div>
+<div class="table-wrap" id="cv-table"><p class="loading">Loading…</p></div></div>
+<p>Adding every possible term scored about the same as the selected model, but it has three more terms, so by the pre-declared rule the simpler model won. Terms that were tried and <b>rejected</b>, because each helped by less than 1%:</p>
+<ul>
+<li>tidal distortion (“overtide”) terms;</li>
+<li>a second, fast Bonneville response;</li>
+<li>a curved Willamette effect;</li>
+<li>a spring–neap effect that varies with flow;</li>
+<li>a single fixed travel delay instead of a day-long average.</li>
+</ul>
+<p>Negative results are results; they're recorded so nobody has to try them again blind.</p>
+<figure><img src="guide/five_years.png" alt="Five years of daily mean observed and modeled river level, and the unexplained remainder" loading="lazy">
+<figcaption>Five water years of daily means: observed (black) and model (blue dashes), including the June 2022 crest at 16.5 ft. Bottom: the unexplained remainder.</figcaption></figure>
+
+<h3>5.3 The final model</h3>
+<p>It's ordinary least squares, the most transparent method there is, applied to terms that each mean something physical. Every coefficient is shown below with its meaning. <span class="faint">(live)</span></p>
+<div class="equation" id="eq">Loading…</div>
+<div class="table-wrap" id="coef-table" style="margin-top:10px"></div>
+<h3>What the coefficients say <span class="faint" style="font-weight:400">(live)</span></h3>
+<div class="table-wrap" id="phys-table"></div>
+
+<!-- ============================================================ -->
+<h2 id="forecast"><span class="n">6</span>Forecasting</h2>
+<p>The 48-hour forecast uses the same equation, run forward in time. The tide part is known ahead, because NOAA publishes predictions weeks out. The river parts are held at their latest values, which is honest: River Brain doesn't know what the dam will do tomorrow. Because Bonneville takes about half a day to arrive, the first half-day of the dam's effect is already on its way and is genuinely known.</p>
+<p>One more piece: if the model is running 0.3 ft low right now, it will probably still be a bit low in a few hours. The forecast carries today's error forward and lets it fade; the best fade time, chosen by testing, was 48 hours.</p>
+<p>To measure accuracy honestly, the forecast was replayed from every 12 hours through each held-out year (about 3,600 forecasts), each using only data that existed at that moment, and compared with what actually happened. The baseline is what anyone could do with a tide table: NOAA's prediction plus today's observed offset.</p>
+<figure><img src="guide/forecast_skill.png" alt="Forecast error versus hours ahead for River Brain and for a tide-table baseline" loading="lazy">
+<figcaption>Typical error (RMSE) by hours ahead. River Brain (blue) beats the tide-table baseline (light gray) at every lead.</figcaption></figure>
+<div class="table-wrap" id="skill-table"></div>
+<p>The shaded band on the Forecast tab is the range that held 90% of those replayed errors at each lead time. It's measured, not assumed. The NWS forecast is drawn alongside for comparison. NWS runs full hydraulic models of the whole river system with upstream forecasts that River Brain doesn't have, so over time the saved archive will show which does better, and when.</p>
+
+<!-- ============================================================ -->
+<h2 id="attribution"><span class="n">7</span>How “why it moved” works</h2>
+<p>The model's absolute level for each driver needs a reference point (“0.4 ft of Willamette” relative to what?), but <em>changes</em> don't. Over any stretch of time, the change in the model equals the sum of the changes in its terms; the constant cancels. So the “why it moved” bars are exact bookkeeping: each bar is how much that driver's term changed, and the bars always add up to the observed change once the unexplained part is included.</p>
+<div class="card" id="example"><p class="loading">Loading the latest example…</p></div>
+<p>Typically about 80% of a 3–6-hour change is accounted for by named drivers, and about 20% ends up unexplained. That ratio is shown honestly each time rather than hidden.</p>
+
+<!-- ============================================================ -->
+<h2 id="limits"><span class="n">8</span>What it can't do (yet)</h2>
+<div class="callout limit"><b class="t">Known limitations</b>
+<ul>
+<li><b>Rising tides at low flow.</b> In late summer the tide rises faster than it falls (flood–ebb asymmetry), and the model runs about 0.15 ft low on rising tides. The terms tried so far don't capture it across all flows; overtide terms that apply only at low flow are the next candidate.</li>
+<li><b>Travel time changes with flow</b> (section 4.2), but the model uses one average response.</li>
+<li><b>“Sandy River” is a proxy</b> for all rain-fed local streams, so its bar is really “local rain.”</li>
+<li><b>Coefficients are correlated.</b> Bonneville, the Willamette and the seasons move together, so the overall fit is more trustworthy than any single coefficient. More years of data is the cure.</li>
+<li><b>Beyond the data it's extrapolating.</b> The model has seen Bonneville up to 459 kcfs and Hayden Island up to 16.5 ft. A 1996-size flood would be outside that range, and the app says so when it happens.</li>
+<li><b>Tide timing at very high flow is poorly defined.</b> The tide is so damped there (about a third of NOAA's prediction) that its timing hardly matters.</li>
+<li><b>All 2026 USGS data is provisional</b>, and USGS may revise it after review.</li>
+<li><b>It is not a flood warning system.</b> For flood decisions, use the National Weather Service.</li>
+</ul></div>
+<figure><img src="guide/08_resid_spectrum.png" alt="Power spectrum of the model's unexplained remainder" loading="lazy">
+<figcaption>From the feasibility study: the spectrum of what's left unexplained. The peaks show where the remaining signal lives: slow (multi-day) changes, a daily cycle, and tidal distortion at 6 hours and shorter. That's a to-do list in physical terms.</figcaption></figure>
+
+<!-- ============================================================ -->
+<h2 id="engineering"><span class="n">9</span>How it's built</h2>
+<div class="diagram-wrap">
+<svg class="diagram" viewBox="0 0 720 270" role="img" aria-labelledby="dg2t">
+  <title id="dg2t">Architecture: public data sources feed an hourly GitHub Action, which writes JSON to GitHub Pages, read by the app on a phone</title>
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="arrowhead" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+  <rect class="box" x="10" y="20" width="150" height="110" rx="10"/>
+  <text x="85" y="44" text-anchor="middle" font-weight="650">Public data</text>
+  <text x="85" y="64" text-anchor="middle" class="sub">USGS · NOAA</text><text x="85" y="80" text-anchor="middle" class="sub">Army Corps · NWS</text><text x="85" y="96" text-anchor="middle" class="sub">UW DART</text>
+  <text x="85" y="116" text-anchor="middle" class="small">8 sources</text>
+  <rect class="box hl" x="200" y="10" width="250" height="130" rx="10"/>
+  <text x="325" y="34" text-anchor="middle" font-weight="650">Hourly job (GitHub Actions)</text>
+  <text x="325" y="56" text-anchor="middle" class="sub">fetch 34 days → quality checks</text>
+  <text x="325" y="74" text-anchor="middle" class="sub">→ features → apply model</text>
+  <text x="325" y="92" text-anchor="middle" class="sub">→ attribution + 48-h forecast</text>
+  <text x="325" y="110" text-anchor="middle" class="sub">→ 5 small JSON files</text>
+  <text x="325" y="128" text-anchor="middle" class="small">about a minute · free</text>
+  <rect class="box" x="490" y="20" width="100" height="110" rx="10"/>
+  <text x="540" y="62" text-anchor="middle" font-weight="650">GitHub</text><text x="540" y="78" text-anchor="middle" font-weight="650">Pages</text><text x="540" y="98" text-anchor="middle" class="small">static site</text>
+  <rect class="box" x="620" y="20" width="90" height="110" rx="10"/>
+  <text x="665" y="62" text-anchor="middle" font-weight="650">Phone</text><text x="665" y="80" text-anchor="middle" class="small">installable app</text><text x="665" y="96" text-anchor="middle" class="small">works offline</text>
+  <path class="arrow" d="M160 75 L196 75"/><path class="arrow" d="M450 75 L486 75"/><path class="arrow" d="M590 75 L616 75"/>
+  <rect class="box" x="200" y="175" width="250" height="80" rx="10"/>
+  <text x="325" y="199" text-anchor="middle" font-weight="650">Refit (on demand)</text>
+  <text x="325" y="219" text-anchor="middle" class="sub">5 years → cross-validate → select</text>
+  <text x="325" y="237" text-anchor="middle" class="sub">→ proposes new coefficients for review</text>
+  <path class="arrow" d="M325 175 L325 144"/>
+  <rect class="box" x="490" y="175" width="220" height="80" rx="10"/>
+  <text x="600" y="199" text-anchor="middle" font-weight="650">Forecast archive</text>
+  <text x="600" y="219" text-anchor="middle" class="sub">every forecast (ours and NWS's)</text>
+  <text x="600" y="237" text-anchor="middle" class="sub">saved hourly, to score later</text>
+  <path class="arrow" d="M430 140 L520 175"/>
+</svg>
+</div>
+<p>A few engineering principles matter for trusting the numbers:</p>
+<ul>
+<li><b>One definition of every input.</b> The same code builds the model's inputs when fitting, when replaying past forecasts and when running live, so they can't drift apart.</li>
+<li><b>No peeking at the future.</b> Every river-flow input uses only data from before the moment it describes. An automated test proves it by rewriting the “future” and checking that nothing earlier changes. (Tide predictions are the one exception, legitimately, since they're published ahead.)</li>
+<li><b>Graceful failure.</b> If a data source is down, the app keeps working and says which source is stale. If one is missing entirely, its driver is held at a typical value and shows no change, with a warning. If the whole hourly job fails, yesterday's site stays up.</li>
+<li><b>Human review of the model.</b> A refit never goes live automatically. It opens a proposal with the full fit report for someone to read first.</li>
+<li><b>Tested.</b> 17 automated tests run on every change. They check, for example, that the bars always add up, that a known equation is recovered from synthetic data, that the oxygen saturation formula matches the published APHA table, and that stale and missing data are handled.</li>
+<li><b>Free to run, forever.</b> Public data, GitHub's free automation and hosting, and plain web files. There's no server to maintain and no subscription.</li>
+</ul>
+<p>In all: about 3,600 lines of Python, JavaScript, HTML and CSS (including this guide), plus the 900-line feasibility notebook. The app draws its own charts with no charting library, so it's small and fast, and it follows the light/dark setting of the phone.<span class="repo-wrap"> Everything is open: <a class="repo-link" href="#">the code, the notebook and the fit report are on GitHub</a>.</span></p>
+
+<!-- ============================================================ -->
+<h2 id="timeline"><span class="n">10</span>How it came together</h2>
+<ol>
+<li><b>Verify every source.</b> Each API was called live before any code was written, which is how the certificate problem, the backwards-flowing Willamette and the lagging “perfect” series were found.</li>
+<li><b>Feasibility study.</b> The Jupyter notebook tested the tide + dam + residual idea, found where it failed, and built the model ladder that fixed it.</li>
+<li><b>Five-year fit.</b> Fetching 2.23 million measurements (the USGS rate limit had to be waited out twice), holding a pre-declared contest between nine models, and replaying about 3,600 forecasts.</li>
+<li><b>Production pipeline.</b> The hourly job, its quality checks, failure handling and tests, verified end to end against live data.</li>
+<li><b>This app and this guide</b>, including the travel-time discovery in section 4.2, which turned up while this guide was being written.</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 id="glossary"><span class="n">11</span>Glossary</h2>
+<dl class="gloss">
+<dt>kcfs</dt><dd>Thousand cubic feet per second. Bonneville typically releases 70–300 kcfs; 100 kcfs is about 750,000 gallons every second.</dd>
+<dt>Stage / gauge datum</dt><dd>Water height relative to a gauge's fixed zero. Hayden Island numbers use the USGS Vancouver gauge's zero, 1.82 ft above the NGVD29 survey datum.</dd>
+<dt>River mile (RM)</dt><dd>Distance upstream from the river's mouth.</dd>
+<dt>Spring and neap tides</dt><dd>The biggest and smallest tides of the ~14.8-day cycle, set by the relative positions of the sun and moon. Nothing to do with the season spring.</dd>
+<dt>Freshet</dt><dd>The spring snowmelt flood, typically May–June on the Columbia.</dd>
+<dt>Godin filter</dt><dd>Three successive moving averages (24, 24 and 25 hours) that remove tides and keep slower changes. It's the standard tool for separating tidal from non-tidal water level.</dd>
+<dt>Hilbert transform</dt><dd>Produces a copy of a wave shifted by a quarter-cycle; used here to let the model learn tide timing (section 4.1).</dd>
+<dt>Least squares</dt><dd>Choosing coefficients that make the sum of squared prediction errors as small as possible.</dd>
+<dt>RMSE</dt><dd>Root-mean-square error: a typical size of miss, in feet.</dd>
+<dt>R²</dt><dd>The fraction of the variation in water level the model accounts for (1 would be perfect).</dd>
+<dt>Cross-validation / out-of-sample</dt><dd>Testing a model on data it wasn't fitted to. The only honest measure of how it will do tomorrow.</dd>
+<dt>Hindcast</dt><dd>Replaying a forecast from a past moment using only data available then, to measure accuracy.</dd>
+<dt>Band-pass filter</dt><dd>Keeps only changes within a range of time scales (here 30 hours to 10 days), removing both tides and slow seasonal trends.</dd>
+</dl>
+
+<h2 id="credits">Credits</h2>
+<p>Data: U.S. Geological Survey; NOAA National Ocean Service (CO-OPS) and National Weather Service; U.S. Army Corps of Engineers, Northwestern Division; Columbia River DART, Columbia Basin Research, University of Washington. Built with Python, pandas, NumPy and matplotlib.</p>
+<p>Made for Dad.</p>
+<p class="backtop"><a href="#">Back to top</a> · <a href="./#now">Back to the app</a></p>
+</article>
+</body>
+</html>

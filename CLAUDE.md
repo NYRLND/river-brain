@@ -26,7 +26,9 @@ engineer): **accuracy and method transparency matter more than polish.**
   icons). No framework or build step; views are Now/Forecast/Explore/Fish/Chemistry/Method.
   Set `REPO` in `site/app.js` once the GitHub repo exists.
 * **Next:** deploy (GitHub repo + Pages + USGS_API_KEY secret), then Tier 2 items in
-  `docs/feature-plan.md`. Model to-do: overtides × low-flow for flood–ebb asymmetry.
+  `docs/feature-plan.md`. Model to-dos: overtides × low-flow for flood–ebb asymmetry; flow-dependent Bonneville
+  lag (guide analysis: median 8 h < 120 kcfs → ~20 h > 250 kcfs). Keep guide prose numbers in
+  sync with the fit when refitting (prose says "September 2026 fit").
 
 ## Repo layout
 ```
@@ -41,6 +43,8 @@ riverbrain/run.py / outputs.py  hourly run → site/data/*.json (+ forecast arch
 model/                          fitted coefficients + report (committed; refit via PR)
 site/                           the PWA (app.js views, chart.js SVG charts, sw.js network-first); site/data/ is generated (gitignored)
 scripts/make_icons.py           renders site/icon-*.png from the icon.svg geometry
+site/guide.html + guide.js      long-form guide (the "wiki"); live tables from data/model.json
+scripts/make_guide_data.py      site/guide/travel_time.json + copies figures (run after each refit)
 tests/                          offline pytest suite (synthetic data)
 .github/workflows/              hourly.yml, refit.yml, ci.yml
 notebooks/01_feasibility.py     Phase 1 jupytext source (EDIT THIS, then regenerate the .ipynb)

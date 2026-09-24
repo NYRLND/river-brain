@@ -206,3 +206,58 @@ details summary { cursor: pointer; color: var(--text-2); }
   .bars { gap: 4px; }
   .bar-row.total { padding-top: 8px; }
 }
+
+/* ================= Guide (long-form article) ================= */
+.article { max-width: 760px; margin: 0 auto; padding: 16px 16px 60px; font-size: 1.02rem; line-height: 1.65; }
+.article h1 { font-size: 2rem; letter-spacing: -0.01em; margin: 8px 0 6px; }
+.article .lede { font-size: 1.15rem; color: var(--text-2); margin: 0 0 12px; }
+.article h2 { font-size: 1.35rem; margin: 44px 0 10px; padding-top: 12px; border-top: 1px solid var(--line); scroll-margin-top: 90px; }
+.article h2 .n { color: var(--text-3); font-weight: 500; margin-right: 6px; }
+.article h3 { font-size: 1.08rem; margin: 26px 0 6px; scroll-margin-top: 90px; }
+.article p { margin: 0.6em 0; }
+.article ul, .article ol { padding-left: 1.3em; margin: 0.5em 0; }
+.article li { margin: 0.3em 0; }
+.article code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.88em; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+.article figure { margin: 18px 0; }
+.article figure img { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid var(--line); background: #fcfcfb; }
+.article figcaption { font-size: 0.86rem; color: var(--text-2); margin-top: 6px; line-height: 1.5; }
+.article .card { margin: 16px 0; }
+.article table { font-size: 0.88rem; }
+.meta { color: var(--text-3); font-size: 0.9rem; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 18px 0; }
+.stat { background: var(--surface-1); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.stat .v { font-size: 1.6rem; font-weight: 650; line-height: 1.15; }
+.stat .l { font-size: 0.84rem; color: var(--text-2); line-height: 1.35; margin-top: 2px; }
+.toc { background: var(--surface-1); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 16px 0; }
+.toc ol { margin: 6px 0 0; columns: 2 220px; column-gap: 24px; }
+.toc a { text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+.callout { border-left: 4px solid var(--accent); background: var(--surface-1); border-radius: 0 10px 10px 0; padding: 10px 14px; margin: 16px 0; }
+.callout.learn { border-left-color: var(--c-willamette); }
+.callout.limit { border-left-color: var(--warn); }
+.callout b.t { display: block; font-size: 0.82rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-2); margin-bottom: 2px; }
+.diagram { width: 100%; height: auto; display: block; }
+.diagram .river { stroke: var(--c-tide); stroke-width: 10; stroke-linecap: round; fill: none; opacity: 0.35; }
+.diagram .tick { stroke: var(--text-3); stroke-width: 1; }
+.diagram .node { fill: var(--surface-1); stroke: var(--text-1); stroke-width: 2; }
+.diagram .node.home { fill: var(--accent); stroke: var(--surface-1); }
+.diagram text { fill: var(--text-1); font-size: 12px; font-family: system-ui, sans-serif; }
+.diagram text.sub { fill: var(--text-2); font-size: 11px; }
+.diagram text.small { fill: var(--text-3); font-size: 10.5px; }
+.diagram .box { fill: var(--surface-1); stroke: var(--line-strong); stroke-width: 1; }
+.diagram .box.hl { stroke: var(--accent); stroke-width: 1.5; }
+.diagram .arrow { stroke: var(--text-2); stroke-width: 1.5; fill: none; marker-end: url(#ah); }
+.diagram .arrowhead { fill: var(--text-2); }
+.diagram .flow-bon { stroke: var(--c-bonneville); stroke-width: 2; fill: none; marker-end: url(#ahb); }
+.diagram .flow-tide { stroke: var(--c-tide); stroke-width: 2; fill: none; marker-end: url(#aht); }
+.diagram .flow-wil { stroke: var(--c-willamette); stroke-width: 2; fill: none; marker-end: url(#ahw); }
+.diagram .flow-sandy { stroke: var(--c-sandy); stroke-width: 2; fill: none; marker-end: url(#ahs); }
+.explorer-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+.explorer-controls input[type=range] { flex: 1; min-width: 180px; accent-color: var(--accent); }
+.readout { font-variant-numeric: tabular-nums; font-weight: 600; }
+.xy text { fill: var(--text-3); font-size: 11px; }
+.xy .grid line { stroke: var(--line); }
+.xy .lbl { fill: var(--text-2); font-size: 11px; }
+dl.gloss dt { font-weight: 650; margin-top: 10px; }
+dl.gloss dd { margin: 2px 0 0; color: var(--text-2); }
+.backtop { font-size: 0.85rem; }
