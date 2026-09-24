@@ -261,3 +261,32 @@ details summary { cursor: pointer; color: var(--text-2); }
 dl.gloss dt { font-weight: 650; margin-top: 10px; }
 dl.gloss dd { margin: 2px 0 0; color: var(--text-2); }
 .backtop { font-size: 0.85rem; }
+
+/* ---- refresh: pull indicator, header button, toast ---- */
+html, body { overscroll-behavior-y: contain; }   /* our own pull-to-refresh replaces the browser's */
+.brand { align-items: center; }
+.icon-btn {
+  margin-left: auto; font: inherit; font-size: 1.15rem; line-height: 1; width: 34px; height: 34px;
+  border-radius: 50%; border: 1px solid var(--line); background: var(--surface-1); color: var(--text-2); cursor: pointer;
+}
+.icon-btn:hover { color: var(--text-1); }
+.icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.is-refreshing .icon-btn span { display: inline-block; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.pull {
+  position: fixed; left: 50%; top: 64px; z-index: 20; margin-left: -80px; width: 160px; text-align: center;
+  background: var(--surface-1); border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 10px;
+  font-size: 0.85rem; color: var(--text-2); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  opacity: 0; pointer-events: none; transition: opacity 0.15s;
+}
+.pull.visible { opacity: 1; }
+.pull .pull-arrow { display: inline-block; transition: transform 0.15s; }
+.pull.armed { color: var(--text-1); border-color: var(--accent); }
+.pull.armed .pull-arrow { transform: rotate(180deg); }
+.toast {
+  position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 30;
+  max-width: 480px; margin: 0 auto; background: var(--text-1); color: var(--surface-1);
+  border-radius: 12px; padding: 10px 14px; font-size: 0.9rem; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+}
+.toast[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .is-refreshing .icon-btn span { animation: none; } }

@@ -500,15 +500,85 @@ route();
 const tickUpdated = () => load("now").then(n => { $("#updated").textContent = `Updated ${ago(n.generated)}`; }).catch(() => {});
 tickUpdated();
 setInterval(tickUpdated, 60_000);
-// A page left open (or reopened from the home screen) refetches when it comes back into view.
+
+// ---------- refresh: pull-down gesture, ↻ button, and on reopen ----------
+// Refreshing fetches the newest *published* data. It can't make the hourly job run sooner
+// (that would need a GitHub credential in the page), so if nothing is newer we say when the
+// next update is due. The job runs at :17 and :47 and takes about a minute.
+function nextUpdate() {
+  const d = new Date();
+  const m = d.getUTCMinutes();
+  const slot = m < 19 ? 19 : m < 49 ? 49 : 79;          // :17/:47 + ~2 min to run and publish
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), slot));
+}
+function toast(text) {
+  const t = $("#toast");
+  t.textContent = text;
+  t.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { t.hidden = true; }, 4500);
+}
+let refreshing = false;
+async function refreshAll({ quiet = false } = {}) {
+  if (refreshing) return;
+  refreshing = true;
+  document.body.classList.add("is-refreshing");
+  const before = cache.now ? (await cache.now.catch(() => null))?.generated : null;
+  for (const k of Object.keys(cache)) delete cache[k];
+  try {
+    const n = await load("now");
+    rendered.clear();
+    await route();
+    tickUpdated();
+    if (!quiet) {
+      if (!before || ms(n.generated) > ms(before)) toast(`Updated: data from ${fClock.format(ms(n.generated))} (${ago(n.generated)}).`);
+      else toast(`Already current: data from ${fClock.format(ms(n.generated))} (${ago(n.generated)}). Next update around ${fClock.format(nextUpdate())}.`);
+    }
+  } catch (e) {
+    if (!quiet) toast("Couldn't reach the server. Showing the last saved data.");
+  } finally {
+    refreshing = false;
+    document.body.classList.remove("is-refreshing");
+  }
+}
+$("#refresh").addEventListener("click", () => refreshAll());
+
+// A page left open, or reopened from the home screen, refreshes itself if its data is old.
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
-  load("now").then(n => {
-    if (Date.now() - ms(n.generated) < 15 * 60_000) return;
-    for (const k of Object.keys(cache)) delete cache[k];
-    rendered.clear();
-    route();
-    tickUpdated();
-  });
+  load("now").then(n => { if (Date.now() - ms(n.generated) > 15 * 60_000) refreshAll({ quiet: true }); }).catch(() => {});
 });
+
+// Pull to refresh (touch screens). Starts only when the page is scrolled to the very top and
+// the finger moves mostly downward, so it never fights normal scrolling or chart dragging.
+(() => {
+  const ind = $("#pull");
+  const label = $("#pull-label");
+  const THRESHOLD = 70;
+  let y0 = null, x0 = 0, dist = 0, pulling = false;
+  const reset = () => { ind.style.transform = ""; ind.classList.remove("armed", "visible"); pulling = false; y0 = null; dist = 0; };
+  window.addEventListener("touchstart", e => {
+    if (window.scrollY > 0 || refreshing || e.touches.length !== 1) return;
+    y0 = e.touches[0].clientY; x0 = e.touches[0].clientX;
+  }, { passive: true });
+  window.addEventListener("touchmove", e => {
+    if (y0 == null) return;
+    const dy = e.touches[0].clientY - y0, dx = Math.abs(e.touches[0].clientX - x0);
+    if (!pulling && (dy < 8 || dx > dy)) { if (dy < 0 || dx > dy) y0 = null; return; }
+    pulling = true;
+    e.preventDefault();                       // hold the page still while pulling
+    dist = Math.min(120, dy * 0.5);           // resistance
+    ind.classList.add("visible");
+    ind.classList.toggle("armed", dist >= THRESHOLD);
+    ind.style.transform = `translateY(${dist}px)`;
+    label.textContent = dist >= THRESHOLD ? "Release to refresh" : "Pull to refresh";
+  }, { passive: false });
+  window.addEventListener("touchend", () => {
+    if (!pulling) { y0 = null; return; }
+    const go = dist >= THRESHOLD;
+    reset();
+    if (go) refreshAll();
+  });
+  window.addEventListener("touchcancel", reset);
+})();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

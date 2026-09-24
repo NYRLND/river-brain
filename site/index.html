@@ -16,7 +16,8 @@
 <body>
 <header class="top">
   <div class="top-inner">
-    <div class="brand"><b>River Brain</b><span class="faint" id="updated"></span></div>
+    <div class="brand"><b>River Brain</b><span class="faint" id="updated"></span>
+      <button id="refresh" class="icon-btn" type="button" aria-label="Refresh data" title="Refresh data"><span aria-hidden="true">↻</span></button></div>
     <nav class="tabs" aria-label="Views">
       <a href="#now" data-view="now">Now</a>
       <a href="#forecast" data-view="forecast">Forecast</a>
@@ -28,6 +29,8 @@
     </nav>
   </div>
 </header>
+<div id="pull" class="pull" aria-hidden="true"><span class="pull-arrow">↓</span> <span id="pull-label">Pull to refresh</span></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <main>
   <section class="view" id="now"><p class="loading">Loading…</p></section>
   <section class="view" id="forecast" hidden><p class="loading">Loading…</p></section>
