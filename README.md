@@ -4,7 +4,9 @@ A gift PWA that explains why the Columbia River under a floating home on Hayden 
 (Portland, OR) is rising or falling, splitting each change into **tide**, **Bonneville
 Dam release**, and **everything else**.
 
-**Status: Phase 2 (production pipeline) complete. Next: the app UI.**
+**Status: Phase 3 (app UI) built; deploying to GitHub Pages.**
+* App: [`site/`](site), a static PWA with no framework or build step. Its six views are
+  Now · Forecast · Explore · Fish · Chemistry · Method.
 * Pipeline: the [`riverbrain/`](riverbrain) package, run hourly by GitHub Actions.
 * Model: [`model/fit_report.md`](model/fit_report.md) (5-year fit, cross-validation,
   forecast skill).
@@ -99,8 +101,27 @@ python -m pytest           # 17 offline tests (causality, attribution closure, s
    orphan `archive` branch → deploy Pages), `refit.yml` (manual: fit → tests → opens a PR
    for review), and `ci.yml` (tests on push).
 
-`site/index.html` is a placeholder that shows the live JSON. The real UI is the next
-phase.
+### The app (`site/`)
+
+* **Now:** river level and trend; "why it moved" (3/6/24 h signed bars that add up to the
+  observed change, including "unexplained"); next highs and lows; what's coming down from
+  Bonneville; today's conditions; data freshness.
+* **Forecast:** 48 h with the 5–95% band, the NWS forecast overlaid, which driver moves
+  the forecast, and hindcast skill vs a tide table.
+* **Explore:** 3/7/30-day observed vs model; each driver's contribution as small multiples
+  on one shared scale; Bonneville powerhouse vs spill; tributaries.
+* **Fish:** Bonneville counts vs the 10-year average; daily counts by species; ladder
+  temperature.
+* **Chemistry:** Willamette water quality; oxygen % saturation (Benson–Krause); the daily
+  "breathing" cycle of O₂ and pH; conductance; phycocyanin.
+* **Method:** the equation and coefficients, physical readings, cross-validation table,
+  and sources.
+
+Charts are a small hand-written SVG module (`site/chart.js`): crosshair, multi-series
+tooltip, keyboard arrows. Colors are one validated hue per driver in both light and dark.
+The service worker is network-first, with the last good copy used when offline. Icons:
+`python scripts/make_icons.py`. Preview locally with
+`python -m http.server 8765 --directory site` after `python -m riverbrain.run`.
 
 ---
 

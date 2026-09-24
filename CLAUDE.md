@@ -22,7 +22,10 @@ engineer): **accuracy and method transparency matter more than polish.**
 * **Phase 2 (production pipeline): done.** `riverbrain/` package, 5-year fit
   (`model/fit_report.md`), hourly run verified live 2026-09-24, workflows written. **Not yet
   pushed**: there is no GitHub remote yet, so ask before creating or pushing one.
-* **Next:** the MVP UI (static PWA in `site/`, reading `site/data/*.json`); see
+* **Phase 3 (UI): built** (`site/`: index.html, app.css, app.js, chart.js, sw.js, manifest,
+  icons). No framework or build step; views are Now/Forecast/Explore/Fish/Chemistry/Method.
+  Set `REPO` in `site/app.js` once the GitHub repo exists.
+* **Next:** deploy (GitHub repo + Pages + USGS_API_KEY secret), then Tier 2 items in
   `docs/feature-plan.md`. Model to-do: overtides × low-flow for flood–ebb asymmetry.
 
 ## Repo layout
@@ -36,7 +39,8 @@ riverbrain/model.py             OLS, grid search, components, forecast, hindcast
 riverbrain/fit.py / report.py   offline fit → model/coefficients.json + model/fit_report.md
 riverbrain/run.py / outputs.py  hourly run → site/data/*.json (+ forecast archive)
 model/                          fitted coefficients + report (committed; refit via PR)
-site/index.html                 placeholder page; site/data/ is generated (gitignored)
+site/                           the PWA (app.js views, chart.js SVG charts, sw.js network-first); site/data/ is generated (gitignored)
+scripts/make_icons.py           renders site/icon-*.png from the icon.svg geometry
 tests/                          offline pytest suite (synthetic data)
 .github/workflows/              hourly.yml, refit.yml, ci.yml
 notebooks/01_feasibility.py     Phase 1 jupytext source (EDIT THIS, then regenerate the .ipynb)
@@ -93,6 +97,8 @@ are NWPS datum). NOAA MLLW ≈ USGS − 1.69 ft. Always state which datum a numb
   `#eb6834`, Willamette `#1baf7a`, spring–neap `#4a3aa7`, ocean `#e87ba4`, unexplained gray.
 * Sandy River component color: `#eda100`.
 * Bonneville QC: `riverbrain/qc.py` (range, spike, flatline, fill gaps ≤ 3 h only).
+* UI: insert data-derived text with textContent only (never innerHTML). Charts keep one
+  y-scale per chart (no dual axes); component small multiples share a scale.
 * JSON outputs must be strict (no NaN/Infinity): always write through `model.save`/`dumps`.
 * Timestamps in JSON: ISO UTC with `Z`, seconds precision (tide times to the minute).
 

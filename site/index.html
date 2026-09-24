@@ -2,34 +2,39 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>River Brain (data preview)</title>
-<style>
-  :root { --bg:#fcfcfb; --fg:#0b0b0b; --muted:#52514e; --line:#e4e3df; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#1a1a19; --fg:#fff; --muted:#c3c2b7; --line:#383835; } }
-  body { background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; margin:0 auto; max-width:760px; padding:16px; }
-  h1 { font-size:20px; margin:0 0 4px } .muted { color:var(--muted) } table { border-collapse:collapse; width:100% }
-  td, th { border-bottom:1px solid var(--line); padding:4px 6px; text-align:left; font-variant-numeric:tabular-nums }
-  pre { white-space:pre-wrap; font-size:12px; color:var(--muted) }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>River Brain</title>
+<meta name="description" content="Why the Columbia River at Hayden Island is rising or falling: tide, Bonneville Dam, tributaries and ocean, updated hourly.">
+<meta name="theme-color" content="#f4f3f0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="app.css">
+<script type="module" src="app.js"></script>
 </head>
 <body>
-<!-- Placeholder page to verify the pipeline end to end. The real app UI is the next phase. -->
-<h1>River Brain: data preview</h1>
-<p class="muted">Placeholder. Shows the hourly JSON the app will be built on.</p>
-<div id="out">Loading…</div>
-<script>
-const f = (x, d = 2) => x == null ? "—" : (x > 0 ? "+" : "") + x.toFixed(d);
-fetch("data/now.json", { cache: "no-store" }).then(r => r.json()).then(n => {
-  const a = n.why_it_moved["6h"];
-  const rows = a ? Object.entries(a.components_ft).map(([k, v]) => `<tr><td>${k.replace("_", "–")}</td><td>${f(v)} ft</td></tr>`).join("") : "";
-  document.getElementById("out").innerHTML = `
-    <p><b>${n.now.stage_ft} ft</b> and ${n.now.direction} (${f(n.now.rate_ft_per_h)} ft/h) at ${new Date(n.now.time).toLocaleString()}</p>
-    ${a ? `<p>Last 6 h: observed ${f(a.observed_change_ft)} ft, made up of:</p><table>${rows}</table>` : ""}
-    <p>Next: ${n.next_tides.map(t => `${t.type} ${t.stage_ft} ft at ${new Date(t.time).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})}`).join(" · ")}</p>
-    ${n.warnings.length ? `<p>⚠ ${n.warnings.join("<br>⚠ ")}</p>` : ""}
-    <details><summary>now.json</summary><pre>${JSON.stringify(n, null, 1)}</pre></details>`;
-}).catch(e => { document.getElementById("out").textContent = "Could not load data/now.json: " + e; });
-</script>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand"><b>River Brain</b><span class="faint" id="updated"></span></div>
+    <nav class="tabs" aria-label="Views">
+      <a href="#now" data-view="now">Now</a>
+      <a href="#forecast" data-view="forecast">Forecast</a>
+      <a href="#explore" data-view="explore">Explore</a>
+      <a href="#fish" data-view="fish">Fish</a>
+      <a href="#chemistry" data-view="chemistry">Chemistry</a>
+      <a href="#method" data-view="method">Method</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <section class="view" id="now"><p class="loading">Loading…</p></section>
+  <section class="view" id="forecast" hidden><p class="loading">Loading…</p></section>
+  <section class="view" id="explore" hidden><p class="loading">Loading…</p></section>
+  <section class="view" id="fish" hidden><p class="loading">Loading…</p></section>
+  <section class="view" id="chemistry" hidden><p class="loading">Loading…</p></section>
+  <section class="view" id="method" hidden><p class="loading">Loading…</p></section>
+</main>
+<footer>Public data from USGS, NOAA, the US Army Corps of Engineers and Columbia River DART. Updated hourly. Not for navigation or flood warnings: see the National Weather Service for those.</footer>
 </body>
 </html>
