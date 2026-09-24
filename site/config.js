@@ -1,2 +1,2 @@
 // Site-wide settings shared by app.js and guide.js.
-export const REPO = ""; // GitHub repository URL; links to it are hidden while this is empty
+export const REPO = "https://github.com/NYRLND/river-brain"; // links to it are hidden if this is empty
