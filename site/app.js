@@ -109,7 +109,7 @@ async function renderNow(v) {
   v.append(h("div", { class: "card hero" },
     h("div", { class: "muted" }, `Columbia River at Hayden Island · ${fFull.format(ms(n.now.time))}`),
     h("div", { class: "value" }, n.now.stage_ft.toFixed(2), " ", h("small", {}, "ft")),
-    h("div", { class: "dir" }, h("span", { class: "dir-arrow", "aria-hidden": "true" }, arrow),
+    rate == null ? null : h("div", { class: "dir" }, h("span", { class: "dir-arrow", "aria-hidden": "true" }, arrow),
       n.now.direction === "steady" ? "Steady" : `${n.now.direction[0].toUpperCase()}${n.now.direction.slice(1)} ${Math.abs(rate).toFixed(2)} ft per hour`),
     actionUsgs != null ? h("div", { class: "faint" },
       `${(actionUsgs - n.now.stage_ft).toFixed(1)} ft below the NWS "action" stage. Heights are on the USGS gauge datum.`) : null));

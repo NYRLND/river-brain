@@ -32,10 +32,11 @@ def _r(x, n=3):
 
 
 # --- small calculations ------------------------------------------------------------
-def trend_ft_per_h(stage15: pd.Series, t_end: pd.Timestamp, minutes: int = 60) -> float | None:
-    """Least-squares slope of 15-min stage over the last `minutes`."""
+def trend_ft_per_h(stage15: pd.Series, t_end: pd.Timestamp, minutes: int = 75) -> float | None:
+    """Least-squares slope of 15-min stage over the last `minutes`. USGS delivers readings in
+    batches, so recent ones can be missing; two readings at least 15 min apart are enough."""
     s = stage15.loc[t_end - pd.Timedelta(minutes=minutes):t_end].dropna()
-    if len(s) < 3:
+    if len(s) < 2 or (s.index[-1] - s.index[0]) < pd.Timedelta("15min"):
         return None
     x = (s.index - s.index[0]) / pd.Timedelta("1h")
     return float(np.polyfit(x, s.to_numpy(), 1)[0])

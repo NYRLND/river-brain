@@ -6,7 +6,7 @@ import pytest
 
 from riverbrain.features import build_features, build_inputs
 from riverbrain.model import clean_json, components, dumps, forecast, ols, predict
-from riverbrain.outputs import do_saturation_mg_l, extrema
+from riverbrain.outputs import do_saturation_mg_l, extrema, trend_ft_per_h
 
 FEATS = ["T", "Tq", "HT", "HTq", "q", "q2", "qw", "sn"]
 SPEC = dict(features=FEATS, tau=6, width=12, fast_tau=None, surge_lag=0)
@@ -97,3 +97,11 @@ def test_extrema_refines_peak_time():
     t = pd.Timestamp(hi["time"])
     assert abs((t - idx[0]) / pd.Timedelta("1h") - 10.3) < 0.1
     assert hi["stage_ft"] == pytest.approx(1.0, abs=0.01)
+
+
+def test_trend_tolerates_batched_usgs_readings():
+    # Real case (2026-09-24): 13:00-13:45 not yet delivered; only 14:00 and 14:15 present
+    idx = pd.to_datetime(["2026-09-24 12:45", "2026-09-24 14:00", "2026-09-24 14:15"], utc=True)
+    s = pd.Series([3.11, 2.46, 2.32], index=idx)
+    assert trend_ft_per_h(s, idx[-1]) == pytest.approx(-0.56, abs=0.01)
+    assert trend_ft_per_h(s.iloc[-1:], idx[-1]) is None
