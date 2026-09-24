@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+# API response cache (17 MB; re-create with RB_REFRESH=1). Executed notebook keeps all results.
+data/raw/
+# generated at runtime from certifi + certs/
+data/ca_bundle.pem

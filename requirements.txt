@@ -1,0 +1,11 @@
+# Phase 1 notebook environment (Python 3.14). SciPy is intentionally absent:
+# the only thing we needed from it (a Hilbert transform) is 6 lines of numpy.
+pandas==3.0.6
+numpy==2.5.3
+matplotlib==3.11.2
+requests==2.34.2
+certifi==2026.7.22
+jupyter==1.1.1
+nbconvert==7.17.1
+ipykernel==7.3.0
+jupytext==1.19.5
