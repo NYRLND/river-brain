@@ -13,17 +13,18 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: hourly
-  cancel-in-progress: false
-
+# The data job and the deploy job have separate concurrency groups. The deploy job passes the
+# github-pages environment gate, and a job waiting there ignores timeout-minutes (GitHub lets it
+# wait up to 30 days). On 2026-09-30 one run hung at that gate for 9 days. Under a single
+# workflow-wide group it held the lock, so every later run was queued and then cancelled. Now
+# the data job never waits on the gate, and a newer deploy cancels an older one.
 jobs:
-  update:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: hourly-build
+      cancel-in-progress: false   # don't kill a run mid-way through pushing the archive
     steps:
       - uses: actions/checkout@v5
 
@@ -61,5 +62,17 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         with:
           path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: pages
+      cancel-in-progress: true    # the newest data wins; also unsticks a hung environment gate
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@v4
