@@ -36,6 +36,12 @@ engineer): **accuracy and method transparency matter more than polish.**
   fine-grained PAT (NYRLND/river-brain only, Actions read/write). The token is stored only at
   cron-job.org; it expires within a year and must be renewed (cron-job.org emails on failure).
   The workflow's own cron (:17/:47) is kept as a backup. `nextUpdate()` in app.js assumes :00/:30.
+* **Stale-data incident (2026-09-30 → 10-09):** a run hung for 9 days at the github-pages
+  environment gate (no timeout applies there). Under one workflow-wide concurrency group,
+  every later run was queued and then cancelled. Fixed by splitting `hourly.yml` into `build`
+  (own group, no environment) and `deploy` (group `pages`, cancel-in-progress). If data goes
+  stale again, look for a run in `waiting`/`pending` first. GitHub doesn't email about
+  cancelled runs, and cron-job.org only sees that the dispatch was accepted.
 * **Next:** Tier 2 items in `docs/feature-plan.md`. Model to-dos: overtides × low-flow for flood–ebb asymmetry; flow-dependent Bonneville
   lag (guide analysis: median 8 h < 120 kcfs → ~20 h > 250 kcfs). Keep guide prose numbers in
   sync with the fit when refitting (prose says "September 2026 fit").
